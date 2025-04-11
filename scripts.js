@@ -28,3 +28,6 @@ if ('serviceWorker' in navigator) {
 } else {
   console.log('Service Worker not supported by this browser.');
 }
+
+
+//我的文件是好的
