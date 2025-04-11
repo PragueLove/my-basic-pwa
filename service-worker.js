@@ -6,7 +6,7 @@ const urlsToCache = [
   '/',                  // 通常网站根目录会映射到 index.html
   '/index.html',
   '/style.css',
-  '/script.js',
+  '/scripts.js',
   '/images/icons/icon-192x192.png', // 确保缓存图标
   '/images/icons/icon-512x512.png'
   // 注意：如果你的 HTML/CSS/JS 引用了其他静态资源 (如字体、其他图片)，
