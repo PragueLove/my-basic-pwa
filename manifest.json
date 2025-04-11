@@ -1,0 +1,24 @@
+{
+  "short_name": "基础PWA",                 // 应用的短名称 (用于主屏幕图标下方)
+  "name": "我的第一个基础PWA项目",         // 应用的全名
+  "description": "一个用于演示PWA基础结构的项目", // 应用描述
+  "icons": [                             // 应用图标列表
+    {
+      "src": "images/icons/icon-192x192.png", // 图标路径 (需要你创建这个文件)
+      "type": "image/png",                 // 图标类型
+      "sizes": "192x192"                   // 图标尺寸
+    },
+    {
+      "src": "images/icons/icon-512x512.png", // 图标路径 (需要你创建这个文件)
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+    // 你可以添加更多不同尺寸的图标
+  ],
+  "start_url": "/index.html",             // 应用启动时加载的页面 (相对于 Manifest 文件)
+  "display": "standalone",                // 应用显示模式 (standalone 像独立应用)
+                                          // 其他选项: 'fullscreen', 'minimal-ui', 'browser'
+  "background_color": "#ffffff",          // 应用启动时的背景颜色 (闪屏)
+  "theme_color": "#4A90E2",               // 应用的主题颜色 (影响浏览器 UI 或系统状态栏)
+  "orientation": "portrait-primary"       // 应用的首选方向 (可选)
+}
