@@ -86,7 +86,10 @@
             const logoutButton = document.getElementById('logout');
             if (logoutButton) {
                 logoutButton.onclick = () => {
-                    // 直接重定向到登录页
+                    // 清除本地存储中的认证信息
+                    localStorage.removeItem('sb-access-token');
+                    localStorage.removeItem('sb-refresh-token');
+                    // 重定向到登录页
                     window.location.href = './index.html';
                 };
             }
