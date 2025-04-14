@@ -13,6 +13,11 @@ const SUPABASE_URL = "https://your-project-url.supabase.co";
 const SUPABASE_KEY = "your-anon-key";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_KEY
+);
+
 // --- App State ---
 let map = null;
 let polyline = null;
