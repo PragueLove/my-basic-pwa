@@ -210,10 +210,13 @@ class UI {
 
 // 初始化
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { SUPABASE_CONFIG } from './config.js';
 
 // 创建 Supabase 客户端实例
-const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+const supabase = createClient(
+  // 尝试从 Vite 环境变量获取，如果不可用则从 window._env_ 获取
+  (import.meta.env?.VITE_SUPABASE_URL || window._env_?.VITE_SUPABASE_URL),
+  (import.meta.env?.VITE_SUPABASE_ANON_KEY || window._env_?.VITE_SUPABASE_ANON_KEY)
+);
 
 // 创建认证管理器实例
 const authManager = new AuthManager(supabase);
@@ -249,53 +252,44 @@ loginForm.addEventListener('submit', async (e) => {
 
 // 注册表单处理
 const registerForm = document.getElementById('register');
-registerForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('register-email').value;
-  const password = document.getElementById('register-password').value;
-  const confirmPassword = document.getElementById('register-confirm-password').value;
+if (registerForm) {
+  registerForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-confirm-password').value;
 
-  if (password !== confirmPassword) {
-    alert('两次输入的密码不一致');
-    return;
-  }
+    if (password !== confirmPassword) {
+      UI.showError('两次输入的密码不一致');
+      return;
+    }
 
-  try {
-    const submitButton = registerForm.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.classList.add('loading');
-    submitButton.textContent = '注册中...';
+    try {
+      const submitButton = registerForm.querySelector('button[type="submit"]');
+      UI.setLoading(submitButton, true);
 
-    const result = await authManager.register(email, password);
-    console.log('注册结果:', result); // 添加调试日志
-    
-    // 显示成功消息
-    const toast = document.createElement('div');
-    toast.className = 'toast success';
-    toast.textContent = result.message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 8000); // 显示更长时间
-    
-    // 注册成功后切换到登录表单
-    document.getElementById('register-form').hidden = true;
-    document.getElementById('login-form').hidden = false;
-    
-    // 清空表单
-    registerForm.reset();
-  } catch (error) {
-    console.error('注册表单错误:', error);
-    const toast = document.createElement('div');
-    toast.className = 'toast error';
-    toast.textContent = error.message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
-  } finally {
-    const submitButton = registerForm.querySelector('button[type="submit"]');
-    submitButton.disabled = false;
-    submitButton.classList.remove('loading');
-    submitButton.textContent = '注册';
-  }
-});
+      const result = await authManager.register(email, password);
+      console.log('注册结果:', result); // 添加调试日志
+      
+      // 显示成功消息
+      UI.showSuccess(result.message);
+      
+      // 清空表单
+      registerForm.reset();
+      
+      // 3秒后跳转到登录页面
+      setTimeout(() => {
+        window.location.href = './login.html';
+      }, 3000);
+    } catch (error) {
+      console.error('注册表单错误:', error);
+      UI.showError(error.message);
+    } finally {
+      const submitButton = registerForm.querySelector('button[type="submit"]');
+      UI.setLoading(submitButton, false);
+    }
+  });
+}
 
 // 表单切换处理
 document.getElementById('show-register').addEventListener('click', (e) => {
