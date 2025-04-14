@@ -78,5 +78,19 @@
 
     <!-- 应用脚本 -->
     <script type="module" src="app.js"></script>
+
+    <script>
+        // 等待 DOM 加载完成
+        document.addEventListener('DOMContentLoaded', () => {
+            // 获取登出按钮
+            const logoutButton = document.getElementById('logout');
+            if (logoutButton) {
+                logoutButton.onclick = () => {
+                    // 直接重定向到登录页
+                    window.location.href = './index.html';
+                };
+            }
+        });
+    </script>
 </body>
 </html> 
