@@ -17,7 +17,8 @@ class Tracker {
       isTracking: false,  // 是否正在追踪
       startTime: null,    // 开始时间戳
       totalDistance: 0,   // 总距离（米）
-      positions: []       // 位置点集合
+      positions: [],      // 位置点集合
+      currentSessionId: null // 当前会话ID
     };
   }
 
@@ -46,6 +47,19 @@ class Tracker {
       throw new Error('浏览器不支持地理位置跟踪');
     }
 
+    // 创建新的运动会话
+    const { data: session, error } = await this.supabase
+      .from('sessions')
+      .insert({
+        user_id: this.supabase.auth.user()?.id,
+        start_time: new Date().toISOString()
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    this.state.currentSessionId = session.id;
+
     // 更新追踪状态
     this.state.isTracking = true;
     this.state.startTime = Date.now();
@@ -69,14 +83,28 @@ class Tracker {
   /**
    * 停止追踪
    */
-  stop() {
+  async stop() {
     if (this.state.watchId) {
       navigator.geolocation.clearWatch(this.state.watchId);
       this.state.watchId = null;
     }
     this.state.isTracking = false;
     UI.updateTrackingUI(false);
-    this.flushBuffer();  // 提交剩余数据
+    await this.flushBuffer();  // 提交剩余数据
+
+    // 更新会话结束时间和统计数据
+    if (this.state.currentSessionId) {
+      const { error } = await this.supabase
+        .from('sessions')
+        .update({
+          end_time: new Date().toISOString(),
+          distance: this.state.totalDistance,
+          duration: Date.now() - this.state.startTime
+        })
+        .eq('id', this.state.currentSessionId);
+
+      if (error) console.error('更新会话失败:', error);
+    }
   }
 
   /**
@@ -118,7 +146,8 @@ class Tracker {
     // 缓存位置数据
     this.positionBuffer.push({
       ...newPoint,
-      user_id: this.supabase.auth.user()?.id  // 关联用户ID
+      user_id: this.supabase.auth.user()?.id,  // 关联用户ID
+      session_id: this.state.currentSessionId  // 关联会话ID
     });
 
     // 批量提交条件检查
@@ -185,6 +214,34 @@ class Tracker {
   handleError(error) {
     this.stop();
     UI.showToast(`地理位置错误: ${error.message}`, 'error');
+  }
+
+  /**
+   * 加载历史记录
+   */
+  async loadHistory() {
+    const { data: sessions, error } = await this.supabase
+      .from('sessions')
+      .select('*')
+      .order('start_time', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+    return sessions;
+  }
+
+  /**
+   * 加载特定会话的轨迹
+   */
+  async loadSessionTrack(sessionId) {
+    const { data: positions, error } = await this.supabase
+      .from('positions')
+      .select('*')
+      .eq('session_id', sessionId)
+      .order('timestamp', { ascending: true });
+
+    if (error) throw error;
+    return positions;
   }
 }
 
@@ -304,6 +361,68 @@ document.addEventListener('DOMContentLoaded', async () => {
       window.location.href = '/auth.html';
     } catch (error) {
       UI.showToast('登出失败: ' + error.message, 'error');
+    }
+  });
+
+  // 历史记录按钮事件
+  const historyButton = document.getElementById('historyButton');
+  const historyModal = document.getElementById('historyModal');
+  const closeButton = historyModal.querySelector('.close-button');
+  const historyList = document.getElementById('historyList');
+
+  historyButton.addEventListener('click', async () => {
+    try {
+      const sessions = await tracker.loadHistory();
+      historyList.innerHTML = sessions.map(session => `
+        <div class="history-item" data-session-id="${session.id}">
+          <div class="history-item__stat">
+            <span class="history-item__label">日期</span>
+            <span class="history-item__value">${new Date(session.start_time).toLocaleDateString()}</span>
+          </div>
+          <div class="history-item__stat">
+            <span class="history-item__label">时长</span>
+            <span class="history-item__value">${UI.formatDuration(session.duration)}</span>
+          </div>
+          <div class="history-item__stat">
+            <span class="history-item__label">距离</span>
+            <span class="history-item__value">${(session.distance / 1000).toFixed(2)} km</span>
+          </div>
+        </div>
+      `).join('');
+      
+      historyModal.hidden = false;
+    } catch (error) {
+      UI.showToast('加载历史记录失败: ' + error.message, 'error');
+    }
+  });
+
+  closeButton.addEventListener('click', () => {
+    historyModal.hidden = true;
+  });
+
+  historyList.addEventListener('click', async (e) => {
+    const historyItem = e.target.closest('.history-item');
+    if (!historyItem) return;
+
+    try {
+      const sessionId = historyItem.dataset.sessionId;
+      const positions = await tracker.loadSessionTrack(sessionId);
+      
+      // 清除当前轨迹
+      tracker.state.polyline.setLatLngs([]);
+      
+      // 显示历史轨迹
+      const latLngs = positions.map(pos => [pos.lat, pos.lng]);
+      tracker.state.polyline.setLatLngs(latLngs);
+      
+      // 调整地图视图以显示整个轨迹
+      if (latLngs.length > 0) {
+        tracker.state.map.fitBounds(tracker.state.polyline.getBounds());
+      }
+      
+      historyModal.hidden = true;
+    } catch (error) {
+      UI.showToast('加载轨迹失败: ' + error.message, 'error');
     }
   });
 

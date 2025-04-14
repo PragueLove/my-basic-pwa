@@ -23,58 +23,32 @@
 
     <!-- 本地样式 -->
     <link rel="stylesheet" href="style.css">
-</head>
-<body>
-    <!-- 主应用界面 -->
-    <div class="app-container">
-        <header>
-            <h1>运动追踪器</h1>
-            <button id="logout">登出</button>
-        </header>
 
-        <!-- 地图容器 -->
-        <main>
-            <div id="map"></div>
+    <script>
+        // 检查用户是否已登录
+        const checkAuth = async () => {
+            const supabaseUrl = 'YOUR_SUPABASE_URL';
+            const supabaseKey = 'YOUR_SUPABASE_KEY';
+            const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
             
-            <div class="metrics">
-                <div class="metric">
-                    <label>距离</label>
-                    <span id="distance">0.00 km</span>
-                </div>
-                <div class="metric">
-                    <label>时间</label>
-                    <span id="duration">00:00:00</span>
-                </div>
-                <div class="metric">
-                    <label>配速</label>
-                    <span id="pace">--:-- /km</span>
-                </div>
-                <div class="metric">
-                    <label>状态</label>
-                    <span id="status">Idle</span>
-                </div>
-            </div>
-
-            <div class="controls">
-                <button id="startButton">开始</button>
-                <button id="stopButton" disabled>停止</button>
-                <button id="resetButton">重置</button>
-            </div>
-        </main>
-    </div>
-
-    <!-- 页脚 -->
-    <footer class="app-footer">
-        <p class="footer-text">A progressive web app for sports tracking</p>
-    </footer>
-
-    <!-- 依赖库 -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-            crossorigin="anonymous"></script>
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+                if (session) {
+                    window.location.href = '/main.html';  // 已登录用户跳转到主页面
+                } else {
+                    window.location.href = '/auth.html';  // 未登录用户跳转到认证页面
+                }
+            } catch (error) {
+                console.error('认证检查失败:', error);
+                window.location.href = '/auth.html';
+            }
+        };
+    </script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-
-    <!-- 应用脚本 -->
-    <script type="module" src="app.js"></script>
+</head>
+<body onload="checkAuth()">
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
+        <p>正在加载...</p>
+    </div>
 </body>
 </html>

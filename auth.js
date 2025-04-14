@@ -25,8 +25,8 @@ class AuthManager {
     // 登录成功后同步用户数据
     try {
       await this.handleUserSync(data.user);
-      // 登录成功后跳转到主页
-      window.location.href = '/index.html';
+      // 登录成功后跳转到主页面
+      window.location.href = '/main.html';
     } catch (error) {
       console.error('用户数据同步失败:', error);
     }

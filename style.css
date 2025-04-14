@@ -310,3 +310,82 @@ body {
     transform: rotate(1turn);
   }
 }
+
+/* 头部控制按钮 */
+.header-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+/* 模态框样式 */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  border-radius: var(--radius-md);
+  width: min(90%, 600px);
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  color: var(--color-text);
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.history-item {
+  padding: 1rem;
+  background: var(--color-bg);
+  border-radius: var(--radius-sm);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.5rem;
+}
+
+.history-item__stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-item__label {
+  font-size: 0.8em;
+  color: #7f8c8d;
+}
+
+.history-item__value {
+  font-weight: 600;
+}
