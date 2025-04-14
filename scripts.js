@@ -451,10 +451,10 @@ class UI {
 // ==== 初始化流程 ====
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化Supabase客户端
- const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL, 
-  import.meta.env.VITE_SUPABASE_KEY
-);
+  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';  // 替换为您的 Supabase URL
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';  // 替换为您的 Supabase anon key
+  
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
   // 初始化功能模块
   const authManager = new AuthManager(supabase);

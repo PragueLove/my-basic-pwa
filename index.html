@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 <head>
     <meta charset="UTF-8">
     <!-- 增强的视口设置 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>Sports Tracker PWA</title>
+    <title>运动追踪器</title>
 
     <!-- PWA 增强配置 -->
-    <link rel="manifest" href="/manifest.json">
+    <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#3498db">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Sports Tracker">
     <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
-    <link rel="icon" type="image/png" href="images/icons/icon-512x512.png">
+    <link rel="icon" type="image/png" href="icons/icon-192x192.png">
 
     <!-- Leaflet CSS (CDN with SRI) -->
     <link rel="stylesheet" 
@@ -25,110 +25,43 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- 认证容器 -->
-    <div id="auth-container" class="auth-container" aria-live="polite">
-        <!-- 登录表单 -->
-        <div id="login-form" class="auth-form card">
-            <h2 class="form-title">Login</h2>
-            <form id="login" novalidate>
-                <div class="form-group">
-                    <label for="login-email" class="form-label">Email</label>
-                    <input type="email" 
-                           id="login-email" 
-                           class="form-input"
-                           autocomplete="email"
-                           required>
-                </div>
-                <div class="form-group">
-                    <label for="login-password" class="form-label">Password</label>
-                    <input type="password" 
-                           id="login-password" 
-                           class="form-input"
-                           autocomplete="current-password"
-                           required>
-                </div>
-                <button type="submit" class="btn primary">Login</button>
-                <p class="form-footer">Don't have an account? 
-                    <a href="#" id="show-register" class="link">Register</a>
-                </p>
-            </form>
-        </div>
-
-        <!-- 注册表单 -->
-        <div id="register-form" class="auth-form card" hidden>
-            <h2 class="form-title">Register</h2>
-            <form id="register" novalidate>
-                <div class="form-group">
-                    <label for="register-email" class="form-label">Email</label>
-                    <input type="email" 
-                           id="register-email" 
-                           class="form-input"
-                           autocomplete="email"
-                           required>
-                </div>
-                <div class="form-group">
-                    <label for="register-password" class="form-label">Password</label>
-                    <input type="password" 
-                           id="register-password" 
-                           class="form-input"
-                           autocomplete="new-password"
-                           minlength="8"
-                           required>
-                </div>
-                <div class="form-group">
-                    <label for="register-confirm-password" class="form-label">Confirm Password</label>
-                    <input type="password" 
-                           id="register-confirm-password" 
-                           class="form-input"
-                           autocomplete="new-password"
-                           minlength="8"
-                           required>
-                </div>
-                <button type="submit" class="btn primary">Register</button>
-                <button type="button" id="resend-verification" class="btn secondary">重新发送验证邮件</button>
-                <p class="form-footer">Already have an account? 
-                    <a href="#" id="show-login" class="link">Login</a>
-                </p>
-            </form>
-        </div>
-    </div>
-
     <!-- 主应用界面 -->
-    <main class="app-container">
-        <header class="app-header">
-            <h1 class="app-title">Sports Tracker</h1>
+    <div class="app-container">
+        <header>
+            <h1>运动追踪器</h1>
+            <button id="logout">登出</button>
         </header>
 
         <!-- 地图容器 -->
-        <div id="map" class="map-container" aria-label="运动轨迹地图"></div>
+        <main>
+            <div id="map"></div>
+            
+            <div class="metrics">
+                <div class="metric">
+                    <label>距离</label>
+                    <span id="distance">0.00 km</span>
+                </div>
+                <div class="metric">
+                    <label>时间</label>
+                    <span id="duration">00:00:00</span>
+                </div>
+                <div class="metric">
+                    <label>配速</label>
+                    <span id="pace">--:-- /km</span>
+                </div>
+                <div class="metric">
+                    <label>状态</label>
+                    <span id="status">Idle</span>
+                </div>
+            </div>
 
-        <!-- 数据面板 -->
-        <div class="data-panel">
-            <div class="metric-card">
-                <span class="metric-label">Status:</span>
-                <span id="status" class="metric-value">Idle</span>
+            <div class="controls">
+                <button id="startButton">开始</button>
+                <button id="stopButton" disabled>停止</button>
+                <button id="resetButton">重置</button>
             </div>
-            <div class="metric-card">
-                <span class="metric-label">Duration:</span>
-                <span id="duration" class="metric-value">00:00:00</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Distance:</span>
-                <span id="distance" class="metric-value">0.00 km</span>
-            </div>
-            <div class="metric-card">
-                <span class="metric-label">Pace:</span>
-                <span id="pace" class="metric-value">--:-- /km</span>
-            </div>
-        </div>
-
-        <!-- 控制按钮 -->
-        <div class="control-group">
-            <button id="startButton" class="btn success" aria-label="开始追踪">Start</button>
-            <button id="stopButton" class="btn danger" disabled aria-label="停止追踪">Stop</button>
-            <button id="resetButton" class="btn warning" disabled aria-label="重置数据">Reset</button>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- 页脚 -->
     <footer class="app-footer">
@@ -136,12 +69,12 @@
     </footer>
 
     <!-- 依赖库 -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <!-- 应用脚本 -->
-    <script type="module" src="scripts.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>

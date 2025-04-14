@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Sports Tracker - Authentication</title>
+
+    <!-- PWA 增强配置 -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#3498db">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sports Tracker">
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" href="images/icons/icon-512x512.png">
+
+    <!-- 本地样式 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-page">
+    <!-- 认证容器 -->
+    <div class="auth-container" style="display: flex;">
+        <!-- 登录表单 -->
+        <div id="login-form" class="auth-form card">
+            <h2 class="form-title">Login</h2>
+            <form id="login" novalidate>
+                <div class="form-group">
+                    <label for="login-email" class="form-label">Email</label>
+                    <input type="email" 
+                           id="login-email" 
+                           class="form-input"
+                           autocomplete="email"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password" class="form-label">Password</label>
+                    <input type="password" 
+                           id="login-password" 
+                           class="form-input"
+                           autocomplete="current-password"
+                           required>
+                </div>
+                <button type="submit" class="btn primary">Login</button>
+                <p class="form-footer">Don't have an account? 
+                    <a href="#" id="show-register" class="link">Register</a>
+                </p>
+            </form>
+        </div>
+
+        <!-- 注册表单 -->
+        <div id="register-form" class="auth-form card" hidden>
+            <h2 class="form-title">Register</h2>
+            <form id="register" novalidate>
+                <div class="form-group">
+                    <label for="register-email" class="form-label">Email</label>
+                    <input type="email" 
+                           id="register-email" 
+                           class="form-input"
+                           autocomplete="email"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password" class="form-label">Password</label>
+                    <input type="password" 
+                           id="register-password" 
+                           class="form-input"
+                           autocomplete="new-password"
+                           minlength="8"
+                           required>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm-password" class="form-label">Confirm Password</label>
+                    <input type="password" 
+                           id="register-confirm-password" 
+                           class="form-input"
+                           autocomplete="new-password"
+                           minlength="8"
+                           required>
+                </div>
+                <button type="submit" class="btn primary">Register</button>
+                <button type="button" id="resend-verification" class="btn secondary">重新发送验证邮件</button>
+                <p class="form-footer">Already have an account? 
+                    <a href="#" id="show-login" class="link">Login</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <!-- 依赖库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <!-- 应用脚本 -->
+    <script type="module" src="auth.js"></script>
+</body>
+</html> 
