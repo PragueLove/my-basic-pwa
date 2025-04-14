@@ -209,146 +209,141 @@ class UI {
 }
 
 // 初始化
-document.addEventListener('DOMContentLoaded', async () => {
-  // 初始化Supabase客户端
-  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';
-  
-  if (!supabaseUrl || !supabaseKey) {
-    alert('Supabase 配置错误！');
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SUPABASE_CONFIG } from './config.js';
+
+// 创建 Supabase 客户端实例
+const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+// 创建认证管理器实例
+const authManager = new AuthManager(supabase);
+
+// 检查是否已登录
+const { data: { session } } = await supabase.auth.getSession();
+if (session) {
+  window.location.href = './main.html';
+  return;
+}
+
+// 注册表单处理
+const registerForm = document.getElementById('register');
+registerForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('register-email').value;
+  const password = document.getElementById('register-password').value;
+  const confirmPassword = document.getElementById('register-confirm-password').value;
+
+  // 表单验证
+  if (!email || !password || !confirmPassword) {
+    alert('请填写所有必填字段！');
     return;
   }
-  
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-  const authManager = new AuthManager(supabase);
 
-  // 检查是否已登录
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    window.location.href = './main.html';
+  if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+    alert('请输入有效的邮箱地址！');
     return;
   }
 
-  // 注册表单处理
-  const registerForm = document.getElementById('register');
-  registerForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const confirmPassword = document.getElementById('register-confirm-password').value;
+  if (password.length < 6) {
+    alert('密码长度至少需要6个字符！');
+    return;
+  }
 
-    // 表单验证
-    if (!email || !password || !confirmPassword) {
-      alert('请填写所有必填字段！');
-      return;
-    }
+  if (password !== confirmPassword) {
+    alert('两次输入的密码不一致！');
+    return;
+  }
 
-    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      alert('请输入有效的邮箱地址！');
-      return;
-    }
+  try {
+    const submitButton = registerForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.classList.add('loading');
+    submitButton.textContent = '注册中...';
 
-    if (password.length < 6) {
-      alert('密码长度至少需要6个字符！');
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      alert('两次输入的密码不一致！');
-      return;
-    }
-
-    try {
-      const submitButton = registerForm.querySelector('button[type="submit"]');
-      submitButton.disabled = true;
-      submitButton.classList.add('loading');
-      submitButton.textContent = '注册中...';
-
-      const result = await authManager.register(email, password);
-      console.log('注册结果:', result); // 添加调试日志
-      
-      // 显示成功消息
-      const toast = document.createElement('div');
-      toast.className = 'toast success';
-      toast.textContent = result.message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 8000); // 显示更长时间
-      
-      // 注册成功后切换到登录表单
-      document.getElementById('register-form').hidden = true;
-      document.getElementById('login-form').hidden = false;
-      
-      // 清空表单
-      registerForm.reset();
-    } catch (error) {
-      console.error('注册表单错误:', error);
-      const toast = document.createElement('div');
-      toast.className = 'toast error';
-      toast.textContent = error.message;
-      document.body.appendChild(toast);
-      setTimeout(() => toast.remove(), 5000);
-    } finally {
-      const submitButton = registerForm.querySelector('button[type="submit"]');
-      submitButton.disabled = false;
-      submitButton.classList.remove('loading');
-      submitButton.textContent = '注册';
-    }
-  });
-
-  // 登录表单处理
-  const loginForm = document.getElementById('login');
-  loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-
-    try {
-      const submitButton = loginForm.querySelector('button[type="submit"]');
-      submitButton.disabled = true;
-      submitButton.classList.add('loading');
-
-      await authManager.login(email, password);
-    } catch (error) {
-      alert(error.message);
-    } finally {
-      const submitButton = loginForm.querySelector('button[type="submit"]');
-      submitButton.disabled = false;
-      submitButton.classList.remove('loading');
-    }
-  });
-
-  // 表单切换处理
-  document.getElementById('show-register').addEventListener('click', (e) => {
-    e.preventDefault();
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    loginForm.hidden = true;
-    registerForm.hidden = false;
-  });
-
-  document.getElementById('show-login').addEventListener('click', (e) => {
-    e.preventDefault();
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    loginForm.hidden = false;
-    registerForm.hidden = true;
-  });
-
-  // 重发验证邮件
-  document.getElementById('resend-verification').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('register-email').value;
+    const result = await authManager.register(email, password);
+    console.log('注册结果:', result); // 添加调试日志
     
-    if (!email) {
-      alert('请先输入邮箱地址！');
-      return;
-    }
+    // 显示成功消息
+    const toast = document.createElement('div');
+    toast.className = 'toast success';
+    toast.textContent = result.message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 8000); // 显示更长时间
+    
+    // 注册成功后切换到登录表单
+    document.getElementById('register-form').hidden = true;
+    document.getElementById('login-form').hidden = false;
+    
+    // 清空表单
+    registerForm.reset();
+  } catch (error) {
+    console.error('注册表单错误:', error);
+    const toast = document.createElement('div');
+    toast.className = 'toast error';
+    toast.textContent = error.message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  } finally {
+    const submitButton = registerForm.querySelector('button[type="submit"]');
+    submitButton.disabled = false;
+    submitButton.classList.remove('loading');
+    submitButton.textContent = '注册';
+  }
+});
 
-    try {
-      const result = await authManager.resendVerificationEmail(email);
-      alert(result.message);
-    } catch (error) {
-      alert(error.message);
-    }
-  });
+// 登录表单处理
+const loginForm = document.getElementById('login');
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+
+  try {
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.classList.add('loading');
+
+    await authManager.login(email, password);
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    submitButton.disabled = false;
+    submitButton.classList.remove('loading');
+  }
+});
+
+// 表单切换处理
+document.getElementById('show-register').addEventListener('click', (e) => {
+  e.preventDefault();
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  loginForm.hidden = true;
+  registerForm.hidden = false;
+});
+
+document.getElementById('show-login').addEventListener('click', (e) => {
+  e.preventDefault();
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  loginForm.hidden = false;
+  registerForm.hidden = true;
+});
+
+// 重发验证邮件
+document.getElementById('resend-verification').addEventListener('click', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('register-email').value;
+  
+  if (!email) {
+    alert('请先输入邮箱地址！');
+    return;
+  }
+
+  try {
+    const result = await authManager.resendVerificationEmail(email);
+    alert(result.message);
+  } catch (error) {
+    alert(error.message);
+  }
 }); 

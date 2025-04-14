@@ -1,3 +1,6 @@
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { SUPABASE_CONFIG } from './config.js';
+
 // 运动追踪类
 class Tracker {
   constructor(supabase) {
@@ -330,106 +333,110 @@ class UI {
   }
 }
 
-// 初始化
+// 初始化应用
 document.addEventListener('DOMContentLoaded', async () => {
-  // 初始化Supabase客户端
-  const supabaseUrl = 'YOUR_SUPABASE_URL';
-  const supabaseKey = 'YOUR_SUPABASE_KEY';
-  
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-  // 检查登录状态
-  const { data: { session } } = await supabase.auth.getSession();
-  if (!session) {
-    window.location.href = './auth.html';
-    return;
-  }
-
-  // 初始化功能模块
-  const tracker = new Tracker(supabase);
-  tracker.initMap();
-
-  // 绑定控制按钮事件
-  UI.elements.startButton.addEventListener('click', () => tracker.start());
-  UI.elements.stopButton.addEventListener('click', () => tracker.stop());
-  UI.elements.resetButton.addEventListener('click', () => tracker.reset());
-
-  // 登出按钮事件
-  UI.elements.logoutButton.addEventListener('click', async () => {
-    try {
-      await supabase.auth.signOut();
-      window.location.href = './auth.html';
-    } catch (error) {
-      UI.showToast('登出失败: ' + error.message, 'error');
+  try {
+    // 创建 Supabase 客户端实例
+    const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+    
+    // 检查认证状态
+    const { data: { session }, error } = await supabase.auth.getSession();
+    if (!session) {
+      window.location.href = './index.html';
+      return;
     }
-  });
 
-  // 历史记录按钮事件
-  const historyButton = document.getElementById('historyButton');
-  const historyModal = document.getElementById('historyModal');
-  const closeButton = historyModal.querySelector('.close-button');
-  const historyList = document.getElementById('historyList');
+    // 创建追踪器实例
+    const tracker = new Tracker(supabase);
+    
+    // 初始化地图
+    tracker.initMap();
 
-  historyButton.addEventListener('click', async () => {
-    try {
-      const sessions = await tracker.loadHistory();
-      historyList.innerHTML = sessions.map(session => `
-        <div class="history-item" data-session-id="${session.id}">
-          <div class="history-item__stat">
-            <span class="history-item__label">日期</span>
-            <span class="history-item__value">${new Date(session.start_time).toLocaleDateString()}</span>
-          </div>
-          <div class="history-item__stat">
-            <span class="history-item__label">时长</span>
-            <span class="history-item__value">${UI.formatDuration(session.duration)}</span>
-          </div>
-          <div class="history-item__stat">
-            <span class="history-item__label">距离</span>
-            <span class="history-item__value">${(session.distance / 1000).toFixed(2)} km</span>
-          </div>
-        </div>
-      `).join('');
-      
-      historyModal.hidden = false;
-    } catch (error) {
-      UI.showToast('加载历史记录失败: ' + error.message, 'error');
-    }
-  });
+    // 绑定按钮事件
+    document.getElementById('startButton').addEventListener('click', () => tracker.start());
+    document.getElementById('stopButton').addEventListener('click', () => tracker.stop());
+    document.getElementById('resetButton').addEventListener('click', () => tracker.reset());
 
-  closeButton.addEventListener('click', () => {
-    historyModal.hidden = true;
-  });
-
-  historyList.addEventListener('click', async (e) => {
-    const historyItem = e.target.closest('.history-item');
-    if (!historyItem) return;
-
-    try {
-      const sessionId = historyItem.dataset.sessionId;
-      const positions = await tracker.loadSessionTrack(sessionId);
-      
-      // 清除当前轨迹
-      tracker.state.polyline.setLatLngs([]);
-      
-      // 显示历史轨迹
-      const latLngs = positions.map(pos => [pos.lat, pos.lng]);
-      tracker.state.polyline.setLatLngs(latLngs);
-      
-      // 调整地图视图以显示整个轨迹
-      if (latLngs.length > 0) {
-        tracker.state.map.fitBounds(tracker.state.polyline.getBounds());
+    // 登出按钮事件
+    document.getElementById('logout').addEventListener('click', async () => {
+      try {
+        await supabase.auth.signOut();
+        window.location.href = './index.html';
+      } catch (error) {
+        UI.showToast('登出失败: ' + error.message, 'error');
       }
-      
-      historyModal.hidden = true;
-    } catch (error) {
-      UI.showToast('加载轨迹失败: ' + error.message, 'error');
-    }
-  });
+    });
 
-  // 注册Service Worker
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js')
-      .then(reg => console.log('Service Worker注册成功:', reg))
-      .catch(err => console.error('Service Worker注册失败:', err));
+    // 历史记录按钮事件
+    const historyButton = document.getElementById('historyButton');
+    const historyModal = document.getElementById('historyModal');
+    const closeButton = historyModal.querySelector('.close-button');
+    const historyList = document.getElementById('historyList');
+
+    historyButton.addEventListener('click', async () => {
+      try {
+        const sessions = await tracker.loadHistory();
+        historyList.innerHTML = sessions.map(session => `
+          <div class="history-item" data-session-id="${session.id}">
+            <div class="history-item__stat">
+              <span class="history-item__label">日期</span>
+              <span class="history-item__value">${new Date(session.start_time).toLocaleDateString()}</span>
+            </div>
+            <div class="history-item__stat">
+              <span class="history-item__label">时长</span>
+              <span class="history-item__value">${UI.formatDuration(session.duration)}</span>
+            </div>
+            <div class="history-item__stat">
+              <span class="history-item__label">距离</span>
+              <span class="history-item__value">${(session.distance / 1000).toFixed(2)} km</span>
+            </div>
+          </div>
+        `).join('');
+        
+        historyModal.hidden = false;
+      } catch (error) {
+        UI.showToast('加载历史记录失败: ' + error.message, 'error');
+      }
+    });
+
+    closeButton.addEventListener('click', () => {
+      historyModal.hidden = true;
+    });
+
+    historyList.addEventListener('click', async (e) => {
+      const historyItem = e.target.closest('.history-item');
+      if (!historyItem) return;
+
+      try {
+        const sessionId = historyItem.dataset.sessionId;
+        const positions = await tracker.loadSessionTrack(sessionId);
+        
+        // 清除当前轨迹
+        tracker.state.polyline.setLatLngs([]);
+        
+        // 显示历史轨迹
+        const latLngs = positions.map(pos => [pos.lat, pos.lng]);
+        tracker.state.polyline.setLatLngs(latLngs);
+        
+        // 调整地图视图以显示整个轨迹
+        if (latLngs.length > 0) {
+          tracker.state.map.fitBounds(tracker.state.polyline.getBounds());
+        }
+        
+        historyModal.hidden = true;
+      } catch (error) {
+        UI.showToast('加载轨迹失败: ' + error.message, 'error');
+      }
+    });
+
+    // 注册Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(reg => console.log('Service Worker注册成功:', reg))
+        .catch(err => console.error('Service Worker注册失败:', err));
+    }
+  } catch (error) {
+    console.error('应用初始化失败:', error);
+    alert('应用初始化失败，请刷新页面重试');
   }
 }); 

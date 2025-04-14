@@ -77,20 +77,70 @@
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <!-- 应用脚本 -->
-    <script type="module" src="app.js"></script>
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+        import { SUPABASE_CONFIG } from './config.js';
 
-    <script>
+        // 初始化 Supabase 客户端
+        const supabase = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.anonKey);
+
+        // 检查认证状态
+        const checkAuth = async () => {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            if (!session) {
+                window.location.href = './index.html';
+            }
+        };
+
         // 等待 DOM 加载完成
         document.addEventListener('DOMContentLoaded', () => {
-            // 获取登出按钮
+            // 检查认证状态
+            checkAuth();
+
+            // 获取所有按钮
+            const startButton = document.getElementById('startButton');
+            const stopButton = document.getElementById('stopButton');
+            const resetButton = document.getElementById('resetButton');
             const logoutButton = document.getElementById('logout');
+
+            // 绑定登出事件
             if (logoutButton) {
-                logoutButton.onclick = () => {
-                    // 清除本地存储中的认证信息
-                    localStorage.removeItem('sb-access-token');
-                    localStorage.removeItem('sb-refresh-token');
-                    // 重定向到登录页
-                    window.location.href = './index.html';
+                logoutButton.onclick = async () => {
+                    try {
+                        await supabase.auth.signOut();
+                        window.location.href = './index.html';
+                    } catch (error) {
+                        console.error('登出失败:', error);
+                        // 即使登出失败，也重定向到登录页
+                        window.location.href = './index.html';
+                    }
+                };
+            }
+
+            // 绑定开始按钮事件
+            if (startButton) {
+                startButton.onclick = () => {
+                    startButton.disabled = true;
+                    stopButton.disabled = false;
+                    // 开始追踪逻辑在 app.js 中处理
+                };
+            }
+
+            // 绑定停止按钮事件
+            if (stopButton) {
+                stopButton.onclick = () => {
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                    // 停止追踪逻辑在 app.js 中处理
+                };
+            }
+
+            // 绑定重置按钮事件
+            if (resetButton) {
+                resetButton.onclick = () => {
+                    startButton.disabled = false;
+                    stopButton.disabled = true;
+                    // 重置追踪逻辑在 app.js 中处理
                 };
             }
         });
