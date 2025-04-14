@@ -131,6 +131,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+  position: relative;
+  min-width: 120px;
 }
 
 .btn:disabled {
@@ -285,23 +287,26 @@ body {
 
 /* 加载状态 */
 .btn.loading {
-  position: relative;
-  color: transparent;
+  color: transparent !important;
+  pointer-events: none;
 }
 
 .btn.loading::after {
   content: '';
   position: absolute;
-  width: 16px;
-  height: 16px;
-  border: 2px solid #fff;
+  width: 1em;
+  height: 1em;
+  border: 2px solid;
   border-radius: 50%;
-  border-top-color: transparent;
-  animation: spin 1s linear infinite;
+  border-color: #fff #fff #fff transparent;
+  animation: button-loading-spinner 0.75s linear infinite;
 }
 
-@keyframes spin {
+@keyframes button-loading-spinner {
+  from {
+    transform: rotate(0turn);
+  }
   to {
-    transform: rotate(360deg);
+    transform: rotate(1turn);
   }
 }
