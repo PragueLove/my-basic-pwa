@@ -29,6 +29,8 @@ class AuthManager {
    * @param {object} user - 用户对象
    */
   async handleUserSync(user) {
+    if (!user) return;
+
     try {
       const { error } = await this.supabase
         .from('users')
@@ -38,6 +40,8 @@ class AuthManager {
           created_at: new Date().toISOString(),
           last_login: new Date().toISOString(),
           updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
         });
 
       if (error) {
@@ -46,7 +50,7 @@ class AuthManager {
       }
     } catch (error) {
       console.error('同步用户数据时出错:', error);
-      UI.showToast('用户数据同步失败', 'error');
+      throw error; // 向上传递错误
     }
   }
 
@@ -61,12 +65,21 @@ class AuthManager {
       password 
     });
     
-    if (error) throw error;  // 抛出登录错误
+    if (error) throw error;
     
     // 检查邮箱是否已验证
     if (!data.user?.email_confirmed_at) {
       throw new Error('请先验证邮箱！');
     }
+
+    // 登录成功后同步用户数据
+    try {
+      await this.handleUserSync(data.user);
+    } catch (error) {
+      console.error('用户数据同步失败:', error);
+      // 不阻止登录流程，只记录错误
+    }
+
     return data.user;
   }
 
@@ -317,7 +330,8 @@ class UI {
     resetButton: document.getElementById('resetButton'),
     distance: document.getElementById('distance'),
     duration: document.getElementById('duration'),
-    pace: document.getElementById('pace')
+    pace: document.getElementById('pace'),
+    status: document.getElementById('status')
   };
 
   /**
@@ -397,6 +411,33 @@ class UI {
     document.body.appendChild(toast);
     setTimeout(() => toast.remove(), 5000);  // 5秒后自动移除
   }
+
+  /**
+   * 显示加载状态
+   * @param {HTMLButtonElement} button - 按钮元素
+   * @param {boolean} loading - 是否显示加载状态
+   */
+  static setLoading(button, loading) {
+    if (loading) {
+      button.disabled = true;
+      button.textContent = '处理中...';
+    } else {
+      button.disabled = false;
+      button.textContent = button.getAttribute('data-original-text') || button.textContent;
+    }
+  }
+
+  /**
+   * 显示错误消息
+   * @param {string} message - 错误信息
+   */
+  static showError(message) {
+    const toast = document.createElement('div');
+    toast.className = 'toast error';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  }
 }
 
 // ==== 初始化流程 ====
@@ -412,57 +453,72 @@ document.addEventListener('DOMContentLoaded', async () => {
   const tracker = new Tracker(supabase);
   tracker.initMap();
 
-  // 登录表单提交处理
-  document.getElementById('login').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    try {
-      await authManager.login(
-        document.getElementById('login-email').value,
-        document.getElementById('login-password').value
-      );
-    } catch (error) {
-      UI.showToast(error.message, 'error');
-    }
+  // 保存按钮原始文本
+  document.querySelectorAll('button').forEach(button => {
+    button.setAttribute('data-original-text', button.textContent);
   });
 
   // 注册表单提交处理
   document.getElementById('register').addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    // 获取表单数据
-    const email = document.getElementById('register-email').value;
-    const password = document.getElementById('register-password').value;
-    const confirmPassword = document.getElementById('register-confirm-password').value;
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    UI.setLoading(submitButton, true);
 
     try {
-      // 密码一致性验证
+      const email = document.getElementById('register-email').value;
+      const password = document.getElementById('register-password').value;
+      const confirmPassword = document.getElementById('register-confirm-password').value;
+
+      // 表单验证
+      if (!email || !password || !confirmPassword) {
+        throw new Error('请填写所有必填字段');
+      }
+
       if (password !== confirmPassword) {
         throw new Error('两次输入的密码不一致');
       }
 
-      // 密码复杂度验证（至少8位，包含字母和数字）
-      if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password)) {
-        throw new Error('密码需至少8位，包含字母和数字');
+      if (password.length < 8) {
+        throw new Error('密码长度至少为8位');
       }
 
       // 执行注册
       await authManager.register(email, password);
       
-      // 注册成功处理
-      UI.showToast('注册成功！请检查邮箱验证邮件', 'success');
+      // 注册成功提示
+      UI.showToast('注册成功！请检查邮箱完成验证', 'success');
+      
+      // 切换到登录表单
       document.getElementById('register-form').style.display = 'none';
       document.getElementById('login-form').style.display = 'block';
-      document.getElementById('register').reset();
-
+      
+      // 重置表单
+      e.target.reset();
     } catch (error) {
       console.error('注册失败:', error);
-      UI.showToast(`注册失败: ${error.message}`, 'error');
-      
-      // 错误字段高亮
-      if (error.message.includes('密码')) {
-        document.getElementById('register-password').classList.add('error-field');
-        document.getElementById('register-confirm-password').classList.add('error-field');
-      }
+      UI.showError(error.message);
+    } finally {
+      UI.setLoading(submitButton, false);
+    }
+  });
+
+  // 登录表单提交处理
+  document.getElementById('login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitButton = e.target.querySelector('button[type="submit"]');
+    UI.setLoading(submitButton, true);
+
+    try {
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+
+      await authManager.login(email, password);
+      UI.showToast('登录成功！', 'success');
+    } catch (error) {
+      console.error('登录失败:', error);
+      UI.showError(error.message);
+    } finally {
+      UI.setLoading(submitButton, false);
     }
   });
 
@@ -479,22 +535,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('register-form').style.display = 'none';
   });
 
+  // 重新发送验证邮件
+  document.getElementById('resend-verification').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const button = e.target;
+    UI.setLoading(button, true);
+
+    try {
+      const email = document.getElementById('register-email').value;
+      if (!email) {
+        throw new Error('请输入邮箱地址');
+      }
+      await authManager.resendVerificationEmail(email);
+      UI.showToast('验证邮件已重新发送，请查收', 'success');
+    } catch (error) {
+      console.error('发送失败:', error);
+      UI.showError(error.message);
+    } finally {
+      UI.setLoading(button, false);
+    }
+  });
+
   // 绑定控制按钮事件
   UI.elements.startButton.addEventListener('click', () => tracker.start());
   UI.elements.stopButton.addEventListener('click', () => tracker.stop());
   UI.elements.resetButton.addEventListener('click', () => tracker.reset());
-
-  // 添加重新发送验证邮件按钮的事件监听
-  document.getElementById('resend-verification').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('register-email').value;
-    try {
-      await authManager.resendVerificationEmail(email);
-      UI.showToast('验证邮件已重新发送，请查收', 'success');
-    } catch (error) {
-      UI.showToast(`发送失败: ${error.message}`, 'error');
-    }
-  });
 
   // 注册Service Worker
   if ('serviceWorker' in navigator) {
