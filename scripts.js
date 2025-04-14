@@ -389,7 +389,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
-  // 注册表单提交处理（修复版本）
+  // 注册表单提交处理
   document.getElementById('register').addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -428,6 +428,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('register-confirm-password').classList.add('error-field');
       }
     }
+  });
+
+  // 表单切换处理
+  document.getElementById('show-register').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('register-form').style.display = 'block';
+  });
+
+  document.getElementById('show-login').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('register-form').style.display = 'none';
   });
 
   // 绑定控制按钮事件
