@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>运动追踪器</title>
+    <script>
+        // 检查用户是否已登录
+        const checkAuth = async () => {
+            try {
+                const response = await fetch('./auth/session', {
+                    credentials: 'include'
+                });
+                const data = await response.json();
+                
+                if (data.session) {
+                    // 已登录用户直接进入主应用
+                    window.location.href = './main.html';
+                } else {
+                    // 未登录用户进入引导页
+                    window.location.href = './onboarding.html';
+                }
+            } catch (error) {
+                // 发生错误时默认进入引导页
+                window.location.href = './onboarding.html';
+            }
+        };
+
+        // 页面加载时执行检查
+        window.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</head>
+<body>
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5;">
+        <div style="text-align: center;">
+            <h1>正在加载...</h1>
+            <p>请稍候，我们正在为您准备最佳体验</p>
+        </div>
+    </div>
+</body>
+</html> 

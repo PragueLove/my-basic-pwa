@@ -418,3 +418,19 @@ body {
 .history-item__value {
   font-weight: 600;
 }
+
+/* 特别优惠横幅 */
+.special-offer-banner {
+    background: rgba(231, 76, 60, 0.1);
+    border: 1px dashed #e74c3c;
+    border-radius: 8px;
+    padding: 0.8rem;
+    margin: 1rem 0;
+    text-align: center;
+    color: #e74c3c;
+    font-size: 0.9rem;
+}
+
+.special-offer-banner p {
+    margin: 0;
+}
