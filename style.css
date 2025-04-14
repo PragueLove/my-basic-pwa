@@ -348,9 +348,13 @@ body {
   z-index: 1000;
 }
 
+.modal[hidden] {
+  display: none;
+}
+
 .modal-content {
   background: white;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   width: min(90%, 600px);
   max-height: 80vh;
   overflow: hidden;
@@ -377,9 +381,17 @@ body {
   font-size: 1.5rem;
   cursor: pointer;
   padding: 0.5rem;
+  line-height: 1;
   color: var(--color-text);
+  opacity: 0.7;
+  transition: opacity 0.2s;
 }
 
+.close-button:hover {
+  opacity: 1;
+}
+
+/* 历史记录列表样式 */
 .history-list {
   display: flex;
   flex-direction: column;
@@ -388,11 +400,9 @@ body {
 
 .history-item {
   padding: 1rem;
-  background: var(--color-bg);
+  background: var(--color-bg-light);
   border-radius: var(--radius-sm);
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-  gap: 0.5rem;
+  border: 1px solid var(--color-border);
 }
 
 .history-item__stat {

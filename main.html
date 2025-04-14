@@ -71,7 +71,7 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h2>运动历史</h2>
-                <button class="close-button">&times;</button>
+                <button class="close-button" id="closeHistoryModal">&times;</button>
             </div>
             <div class="modal-body">
                 <div id="historyList" class="history-list">
@@ -94,5 +94,29 @@
 
     <!-- 应用脚本 -->
     <script type="module" src="app.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const historyModal = document.getElementById('historyModal');
+        const closeButton = document.getElementById('closeHistoryModal');
+
+        // 添加关闭按钮点击事件
+        closeButton.addEventListener('click', () => {
+            historyModal.hidden = true;
+        });
+
+        // 点击模态框外部区域关闭
+        historyModal.addEventListener('click', (e) => {
+            if (e.target === historyModal) {
+                historyModal.hidden = true;
+            }
+        });
+
+        // 添加打开模态框的功能
+        document.getElementById('historyButton').addEventListener('click', () => {
+            historyModal.hidden = false;
+        });
+    });
+    </script>
 </body>
 </html> 
