@@ -341,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 检查登录状态
   const { data: { session } } = await supabase.auth.getSession();
   if (!session) {
-    window.location.href = '/auth.html';
+    window.location.href = './auth.html';
     return;
   }
 
@@ -358,7 +358,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   UI.elements.logoutButton.addEventListener('click', async () => {
     try {
       await supabase.auth.signOut();
-      window.location.href = '/auth.html';
+      window.location.href = './auth.html';
     } catch (error) {
       UI.showToast('登出失败: ' + error.message, 'error');
     }
@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   // 注册Service Worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/service-worker.js')
+    navigator.serviceWorker.register('./service-worker.js')
       .then(reg => console.log('Service Worker注册成功:', reg))
       .catch(err => console.error('Service Worker注册失败:', err));
   }

@@ -4,13 +4,16 @@
 const CACHE_NAME = 'sports-tracker-pwa-cache-v2';
 // Core files to cache (App Shell)
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/script.js',
-  '/manifest.json', // Cache the manifest
-  '/images/icons/icon-192x192.png',
-  '/images/icons/icon-512x512.png'
+  './',
+  './index.html',
+  './main.html',
+  './auth.html',
+  './style.css',
+  './app.js',
+  './auth.js',
+  './manifest.json',
+  './images/icons/icon-192x192.png',
+  './images/icons/icon-512x512.png'
   // Note: We are NOT caching Leaflet's CDN files here.
   // Caching external resources can be complex (CORS, versioning).
   // The app will require internet for map tiles and the Leaflet library itself.

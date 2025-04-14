@@ -26,7 +26,7 @@ class AuthManager {
     try {
       await this.handleUserSync(data.user);
       // 登录成功后跳转到主页面
-      window.location.href = '/main.html';
+      window.location.href = './main.html';
     } catch (error) {
       console.error('用户数据同步失败:', error);
     }
@@ -275,6 +275,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 检查是否已登录，如果已登录则跳转到主页
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
-    window.location.href = '/index.html';
+    window.location.href = './main.html';
   }
 }); 
