@@ -10,28 +10,21 @@ class AuthManager {
    * @param {string} password - 密码
    */
   async login(email, password) {
-    const { data, error } = await this.supabase.auth.signInWithPassword({ 
-      email, 
-      password 
-    });
-    
-    if (error) throw error;
-    
-    // 检查邮箱是否已验证
-    if (!data.user?.email_confirmed_at) {
-      throw new Error('请先验证邮箱！');
-    }
-
-    // 登录成功后同步用户数据
     try {
-      await this.handleUserSync(data.user);
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
+
       // 登录成功后跳转到主页面
       window.location.href = './main.html';
+      return data.user;
     } catch (error) {
-      console.error('用户数据同步失败:', error);
+      console.error('登录失败:', error);
+      throw new Error(error.message || '登录失败，请检查邮箱和密码是否正确');
     }
-
-    return data.user;
   }
 
   /**
@@ -46,46 +39,39 @@ class AuthManager {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/index.html?verified=true`
+          emailRedirectTo: `${window.location.origin}/index.html?verified=true`,
+          data: {
+            email: email
+          }
         }
       });
 
       if (authError) {
         console.error('认证错误:', authError);
-        if (authError.status === 401) {
-          throw new Error('认证失败：请检查 Supabase 配置是否正确');
+        // 处理特定的错误情况
+        if (authError.message.includes('Email rate limit exceeded')) {
+          throw new Error('发送邮件次数超限，请稍后再试');
         }
         throw authError;
       }
 
-      // 2. 创建用户配置文件
-      if (authData?.user) {
-        const { error: profileError } = await this.supabase
-          .from('users')
-          .insert({
-            id: authData.user.id,
-            email: email,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-
-        if (profileError) {
-          console.error('创建用户配置文件失败:', profileError);
-          // 如果是违反唯一约束，说明用户记录已存在
-          if (profileError.code === '23505') {
-            return { success: true, message: '注册成功！请查收验证邮件。' };
-          }
-          // 如果是权限问题
-          if (profileError.code === '42501') {
-            throw new Error('注册失败：数据库权限配置问题，请联系管理员。');
-          }
-          throw profileError;
-        }
-      } else {
-        throw new Error('注册失败：未能创建用户账号');
+      // 检查注册响应
+      if (!authData?.user) {
+        throw new Error('注册失败：服务器响应异常');
       }
 
-      return { success: true, message: '注册成功！请查收验证邮件。' };
+      // 检查邮件发送状态
+      if (!authData.user.confirmation_sent_at) {
+        throw new Error('验证邮件发送失败，请使用重新发送验证邮件功能');
+      }
+
+      console.log('注册响应:', authData); // 添加调试日志
+
+      return { 
+        success: true, 
+        message: '注册成功！请查收验证邮件。\n如果未收到邮件，请检查垃圾邮件文件夹或使用重新发送功能。',
+        user: authData.user 
+      };
     } catch (error) {
       console.error('注册失败:', error);
       
@@ -93,33 +79,53 @@ class AuthManager {
       if (error.message.includes('User already registered')) {
         throw new Error('该邮箱已被注册，请直接登录或使用其他邮箱。');
       }
-      if (error.message.includes('new row violates row-level security policy')) {
-        throw new Error('注册失败：系统权限配置问题，请联系管理员。');
+      if (error.message.includes('Password should be at least 6 characters')) {
+        throw new Error('密码长度至少需要6个字符。');
+      }
+      if (error.message.includes('Invalid email')) {
+        throw new Error('请输入有效的邮箱地址。');
       }
       if (error.status === 401) {
         throw new Error('认证失败：请检查 Supabase 配置是否正确');
       }
       
-      // 其他错误
       throw new Error(error.message || '注册失败，请稍后重试');
     }
   }
 
   /**
    * 重新发送验证邮件
-   * @param {string} email - 用户邮箱
    */
   async resendVerificationEmail(email) {
-    const { error } = await this.supabase.auth.resend({
-      type: 'signup',
-      email: email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/index.html?verified=true`
+    try {
+      console.log('尝试重新发送验证邮件到:', email); // 添加调试日志
+      
+      const { data, error } = await this.supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/index.html?verified=true`
+        }
+      });
+
+      console.log('重发邮件响应:', data); // 添加调试日志
+
+      if (error) {
+        console.error('重发邮件错误:', error);
+        if (error.message.includes('Email rate limit exceeded')) {
+          throw new Error('发送邮件次数超限，请等待一段时间后再试');
+        }
+        throw error;
       }
-    });
-    
-    if (error) throw error;
-    return { success: true };
+
+      return { 
+        success: true, 
+        message: '验证邮件已重新发送！\n请检查收件箱和垃圾邮件文件夹。' 
+      };
+    } catch (error) {
+      console.error('发送验证邮件失败:', error);
+      throw new Error(error.message || '发送验证邮件失败，请稍后重试');
+    }
   }
 
   /**
@@ -209,19 +215,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';
   
   if (!supabaseUrl || !supabaseKey) {
-    UI.showError('Supabase 配置错误！');
+    alert('Supabase 配置错误！');
     return;
   }
   
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
   const authManager = new AuthManager(supabase);
 
-  // 保存按钮原始文本
-  document.querySelectorAll('button').forEach(button => {
-    button.setAttribute('data-original-text', button.textContent);
-  });
+  // 检查是否已登录
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    window.location.href = './main.html';
+    return;
+  }
 
-  // 注册表单提交处理
+  // 注册表单处理
   const registerForm = document.getElementById('register');
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -229,7 +237,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const password = document.getElementById('register-password').value;
     const confirmPassword = document.getElementById('register-confirm-password').value;
 
-    // 验证密码
+    // 表单验证
+    if (!email || !password || !confirmPassword) {
+      alert('请填写所有必填字段！');
+      return;
+    }
+
+    if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+      alert('请输入有效的邮箱地址！');
+      return;
+    }
+
+    if (password.length < 6) {
+      alert('密码长度至少需要6个字符！');
+      return;
+    }
+
     if (password !== confirmPassword) {
       alert('两次输入的密码不一致！');
       return;
@@ -239,39 +262,58 @@ document.addEventListener('DOMContentLoaded', async () => {
       const submitButton = registerForm.querySelector('button[type="submit"]');
       submitButton.disabled = true;
       submitButton.classList.add('loading');
+      submitButton.textContent = '注册中...';
 
       const result = await authManager.register(email, password);
-      alert(result.message);
+      console.log('注册结果:', result); // 添加调试日志
+      
+      // 显示成功消息
+      const toast = document.createElement('div');
+      toast.className = 'toast success';
+      toast.textContent = result.message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 8000); // 显示更长时间
       
       // 注册成功后切换到登录表单
       document.getElementById('register-form').hidden = true;
       document.getElementById('login-form').hidden = false;
+      
+      // 清空表单
+      registerForm.reset();
     } catch (error) {
-      alert(error.message);
+      console.error('注册表单错误:', error);
+      const toast = document.createElement('div');
+      toast.className = 'toast error';
+      toast.textContent = error.message;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 5000);
     } finally {
       const submitButton = registerForm.querySelector('button[type="submit"]');
       submitButton.disabled = false;
       submitButton.classList.remove('loading');
+      submitButton.textContent = '注册';
     }
   });
 
-  // 登录表单提交处理
-  document.getElementById('login').addEventListener('submit', async (e) => {
+  // 登录表单处理
+  const loginForm = document.getElementById('login');
+  loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    UI.setLoading(submitButton, true);
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
 
     try {
-      const email = document.getElementById('login-email').value;
-      const password = document.getElementById('login-password').value;
+      const submitButton = loginForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.classList.add('loading');
 
       await authManager.login(email, password);
-      UI.showSuccess('登录成功！');
     } catch (error) {
-      console.error('登录失败:', error);
-      UI.showError(error.message);
+      alert(error.message);
     } finally {
-      UI.setLoading(submitButton, false);
+      const submitButton = loginForm.querySelector('button[type="submit"]');
+      submitButton.disabled = false;
+      submitButton.classList.remove('loading');
     }
   });
 
@@ -292,31 +334,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     registerForm.hidden = true;
   });
 
-  // 重新发送验证邮件
+  // 重发验证邮件
   document.getElementById('resend-verification').addEventListener('click', async (e) => {
     e.preventDefault();
-    const button = e.target;
-    UI.setLoading(button, true);
+    const email = document.getElementById('register-email').value;
+    
+    if (!email) {
+      alert('请先输入邮箱地址！');
+      return;
+    }
 
     try {
-      const email = document.getElementById('register-email').value;
-      if (!email) {
-        throw new Error('请输入邮箱地址');
-      }
-      await authManager.resendVerificationEmail(email);
-      UI.showSuccess('验证邮件已重新发送，请查收');
+      const result = await authManager.resendVerificationEmail(email);
+      alert(result.message);
     } catch (error) {
-      console.error('发送失败:', error);
-      UI.showError(error.message);
-    } finally {
-      UI.setLoading(button, false);
+      alert(error.message);
     }
   });
-
-  // 检查是否已登录，如果已登录则跳转到主页
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
-    window.location.href = './main.html';
-    return;
-  }
 }); 
