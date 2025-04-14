@@ -1,341 +1,313 @@
-// --- DOM Elements ---
-const mapElement = document.getElementById('map');
-const statusElement = document.getElementById('status');
-const durationElement = document.getElementById('duration');
-const distanceElement = document.getElementById('distance');
-const paceElement = document.getElementById('pace');
-const startButton = document.getElementById('startButton');
-const stopButton = document.getElementById('stopButton');
-const resetButton = document.getElementById('resetButton');
+// ==== 模块化封装 =====
+class AuthManager {
+  constructor(supabase) {
+    this.supabase = supabase;
+    this.initAuthListeners();
+  }
 
-// --- Supabase Configuration ---
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+  initAuthListeners() {
+    // 监听认证状态变化
+    this.supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN') {
+        await this.handleUserSync(session.user);
+        UI.toggleAuthUI(false);
+      } else {
+        UI.toggleAuthUI(true);
+      }
+    });
+  }
 
-// --- App State ---
-let map = null;
-let polyline = null;
-let watchId = null;
-let isTracking = false;
-let startTime = null;
-let positions = []; // Array to store {lat, lng, timestamp}
-let totalDistance = 0; // in kilometers
-let durationInterval = null;
+  async handleUserSync(user) {
+    // 同步用户数据到 public.users
+    const { error } = await this.supabase.from('users').upsert({
+      id: user.id,
+      email: user.email,
+      last_login: new Date().toISOString()
+    }, { onConflict: 'id' });
 
-// --- Leaflet Map Initialization ---
-function initializeMap() {
-    // Initial coordinates (e.g., center of a city, or user's first known location)
-    const initialCoords = [51.505, -0.09]; // London coordinates
-    map = L.map(mapElement).setView(initialCoords, 13);
+    if (error) console.error('用户数据同步失败:', error);
+  }
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(map);
-
-    polyline = L.polyline([], { color: 'blue' }).addTo(map);
-
-    // Try to get initial user location to center map
-    if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            map.setView([pos.coords.latitude, pos.coords.longitude], 16);
-        }, err => {
-            console.warn(`Could not get initial position: ${err.message}`);
-        });
+  async login(email, password) {
+    const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
+    
+    if (error) throw error;
+    if (!data.user?.email_confirmed_at) {
+      throw new Error('请先验证邮箱！');
     }
+    return data.user;
+  }
+
+  async register(email, password) {
+    const { data, error } = await this.supabase.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
+  }
 }
 
-// --- Tracking Logic ---
-function startTracking() {
+class Tracker {
+  constructor(supabase) {
+    this.supabase = supabase;
+    this.positionBuffer = [];
+    this.lastInsert = 0;
+    this.BATCH_SIZE = 10;
+    this.BATCH_INTERVAL = 15000; // 15秒
+
+    this.state = {
+      map: null,
+      polyline: null,
+      watchId: null,
+      isTracking: false,
+      startTime: null,
+      totalDistance: 0,
+      positions: []
+    };
+  }
+
+  initMap() {
+    this.state.map = L.map('map').setView([51.505, -0.09], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(this.state.map);
+    this.state.polyline = L.polyline([], { color: 'blue' }).addTo(this.state.map);
+  }
+
+  async start() {
     if (!('geolocation' in navigator)) {
-        alert('Geolocation is not supported by your browser.');
-        return;
+      throw new Error('浏览器不支持地理位置跟踪');
     }
 
-    isTracking = true;
-    startTime = Date.now();
-    positions = [];
-    totalDistance = 0;
+    this.state.isTracking = true;
+    this.state.startTime = Date.now();
+    UI.updateTrackingUI(true);
 
-    updateUIState();
-    statusElement.textContent = 'Tracking...';
-    startDurationTimer();
+    // 请求位置权限
+    const status = await navigator.permissions.query({ name: 'geolocation' });
+    status.onchange = () => this.handlePermissionChange(status.state);
 
-    const options = {
-        enableHighAccuracy: true,
-        timeout: 10000, // 10 seconds
-        maximumAge: 0 // Don't use cached position
+    this.state.watchId = navigator.geolocation.watchPosition(
+      pos => this.handlePosition(pos),
+      err => this.handleError(err),
+      { enableHighAccuracy: true, maximumAge: 0 }
+    );
+  }
+
+  stop() {
+    if (this.state.watchId) {
+      navigator.geolocation.clearWatch(this.state.watchId);
+      this.state.watchId = null;
+    }
+    this.state.isTracking = false;
+    UI.updateTrackingUI(false);
+    this.flushBuffer(); // 强制刷新剩余数据
+  }
+
+  reset() {
+    this.stop();
+    this.state.polyline.setLatLngs([]);
+    this.state.totalDistance = 0;
+    this.state.positions = [];
+    UI.resetMetrics();
+  }
+
+  handlePosition(position) {
+    const newPoint = {
+      lat: position.coords.latitude,
+      lng: position.coords.longitude,
+      accuracy: position.coords.accuracy,
+      timestamp: new Date(position.timestamp)
     };
 
-    watchId = navigator.geolocation.watchPosition(
-        handlePositionUpdate,
-        handleGeolocationError,
-        options
-    );
-}
+    // 更新地图
+    const latLng = [newPoint.lat, newPoint.lng];
+    this.state.polyline.addLatLng(latLng);
+    this.state.map.setView(latLng);
 
-function stopTracking() {
-    if (watchId !== null) {
-        navigator.geolocation.clearWatch(watchId);
-        watchId = null;
+    // 计算距离
+    if (this.state.positions.length > 0) {
+      const prev = this.state.positions.slice(-1)[0];
+      this.state.totalDistance += this.calculateDistance(prev, newPoint);
     }
-    isTracking = false;
-    updateUIState();
-    stopDurationTimer();
-    statusElement.textContent = 'Paused';
-}
+    this.state.positions.push(newPoint);
 
-function resetTracking() {
-    stopTracking();
-    startTime = null;
-    positions = [];
-    totalDistance = 0;
-    polyline.setLatLngs([]); // Clear the line on the map
-    durationElement.textContent = '00:00:00';
-    distanceElement.textContent = '0.00';
-    paceElement.textContent = '--:--';
-    statusElement.textContent = 'Idle';
-    updateUIState(); // Enable start, disable others if needed
-}
-
-function handlePositionUpdate(position) {
-    const { latitude, longitude, accuracy } = position.coords;
-    const timestamp = position.timestamp;
-
-    // Insert position data into the database
-    supabase.from('positions').insert([
-        { lat: latitude, lng: longitude, accuracy: accuracy, timestamp: timestamp }
-    ]).then(result => {
-        if (result.error) {
-            console.error('Error inserting position data:', result.error);
-        } else {
-            console.log('Position data inserted successfully');
-        }
+    // 批量处理
+    this.positionBuffer.push({
+      ...newPoint,
+      user_id: this.supabase.auth.user()?.id
     });
 
-    const newPoint = { lat: latitude, lng: longitude, timestamp: timestamp };
-    positions.push(newPoint);
-
-    // Update map polyline
-    const latLng = [latitude, longitude];
-    polyline.addLatLng(latLng);
-
-    // Center map on the new position (optional, can be annoying)
-    map.setView(latLng, map.getZoom()); // Adjust zoom level as needed
-
-    // Calculate distance from the previous point
-    if (positions.length > 1) {
-        const prevPoint = positions[positions.length - 2];
-        totalDistance += calculateDistance(
-            prevPoint.lat, prevPoint.lng,
-            newPoint.lat, newPoint.lng
-        );
+    if (this.positionBuffer.length >= this.BATCH_SIZE || 
+        Date.now() - this.lastInsert > this.BATCH_INTERVAL) {
+      this.flushBuffer();
     }
 
-    // Update UI metrics
-    distanceElement.textContent = totalDistance.toFixed(2);
-    updatePace();
-}
+    UI.updateMetrics({
+      distance: this.state.totalDistance,
+      duration: Date.now() - this.state.startTime
+    });
+  }
 
-function handleGeolocationError(error) {
-    console.error('Geolocation error:', error);
-    stopTracking(); // Stop if there's an error
-    statusElement.textContent = `Error: ${error.message}`;
-    alert(`Geolocation Error: ${error.message}`);
-}
+  async flushBuffer() {
+    if (this.positionBuffer.length === 0) return;
 
-// --- UI Updates & Timers ---
-function updateUIState() {
-    startButton.disabled = isTracking;
-    stopButton.disabled = !isTracking;
-    resetButton.disabled = positions.length === 0 && !isTracking;
-}
+    const { error } = await this.supabase.from('positions')
+      .insert(this.positionBuffer);
 
-function startDurationTimer() {
-    if (durationInterval) clearInterval(durationInterval); // Clear existing timer
-
-    durationInterval = setInterval(() => {
-        if (!startTime) return;
-        const elapsedMs = Date.now() - startTime;
-        durationElement.textContent = formatDuration(elapsedMs);
-        updatePace(); // Pace depends on duration
-    }, 1000);
-}
-
-function stopDurationTimer() {
-    clearInterval(durationInterval);
-    durationInterval = null;
-}
-
-function updatePace() {
-    if (totalDistance > 0 && startTime) {
-        const elapsedMs = Date.now() - startTime;
-        const msPerKm = elapsedMs / totalDistance;
-        paceElement.textContent = formatPace(msPerKm);
-    } else {
-        paceElement.textContent = '--:--';
+    if (!error) {
+      this.positionBuffer = [];
+      this.lastInsert = Date.now();
     }
+  }
+
+  calculateDistance(p1, p2) {
+    const R = 6371e3; // 米
+    const φ1 = p1.lat * Math.PI/180;
+    const φ2 = p2.lat * Math.PI/180;
+    const Δφ = (p2.lat - p1.lat) * Math.PI/180;
+    const Δλ = (p2.lng - p1.lng) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  handlePermissionChange(state) {
+    if (state !== 'granted') {
+      this.stop();
+      UI.showToast('位置权限已关闭，跟踪停止', 'error');
+    }
+  }
+
+  handleError(error) {
+    this.stop();
+    UI.showToast(`地理位置错误: ${error.message}`, 'error');
+  }
 }
 
-// --- Helper Functions ---
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in km
-    const dLat = deg2rad(lat2 - lat1);
-    const dLon = deg2rad(lon2 - lon1);
-    const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
-        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c; // Distance in km
-    return distance;
-}
+class UI {
+  static elements = {
+    authContainer: document.getElementById('auth-container'),
+    loginForm: document.getElementById('login-form'),
+    registerForm: document.getElementById('register-form'),
+    startButton: document.getElementById('startButton'),
+    stopButton: document.getElementById('stopButton'),
+    resetButton: document.getElementById('resetButton'),
+    distance: document.getElementById('distance'),
+    duration: document.getElementById('duration'),
+    pace: document.getElementById('pace')
+  };
 
-function deg2rad(deg) {
-    return deg * (Math.PI / 180);
-}
+  static toggleAuthUI(show) {
+    this.elements.authContainer.style.display = show ? 'flex' : 'none';
+    this.elements.startButton.disabled = show;
+  }
 
-function formatDuration(ms) {
-    if (ms < 0) ms = 0;
+  static updateTrackingUI(isTracking) {
+    this.elements.startButton.disabled = isTracking;
+    this.elements.stopButton.disabled = !isTracking;
+    this.elements.resetButton.disabled = isTracking;
+  }
+
+  static updateMetrics({ distance, duration }) {
+    this.elements.distance.textContent = (distance / 1000).toFixed(2); // 转为千米
+    this.elements.duration.textContent = this.formatDuration(duration);
+    this.elements.pace.textContent = this.calculatePace(distance, duration);
+  }
+
+  static resetMetrics() {
+    this.elements.distance.textContent = '0.00';
+    this.elements.duration.textContent = '00:00:00';
+    this.elements.pace.textContent = '--:--';
+  }
+
+  static formatDuration(ms) {
     const totalSeconds = Math.floor(ms / 1000);
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
     const seconds = totalSeconds % 60;
+    return [hours, minutes, seconds]
+      .map(v => String(v).padStart(2, '0'))
+      .join(':');
+  }
 
-    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  static calculatePace(distance, duration) {
+    if (distance === 0) return '--:--';
+    const paceMsPerKm = duration / (distance / 1000);
+    const paceMinutes = Math.floor(paceMsPerKm / 60000);
+    const paceSeconds = Math.floor((paceMsPerKm % 60000) / 1000);
+    return `${String(paceMinutes).padStart(2, '0')}:${String(paceSeconds).padStart(2, '0')}`;
+  }
+
+  static showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 5000);
+  }
 }
 
-function formatPace(msPerKm) {
-    if (!isFinite(msPerKm) || msPerKm <= 0) {
-        return '--:--';
+// ==== 初始化流程 ====
+document.addEventListener('DOMContentLoaded', async () => {
+  // 初始化 Supabase
+  const supabase = createClient(
+    import.meta.env.VITE_SUPABASE_URL,
+    import.meta.env.VITE_SUPABASE_KEY
+  );
+
+  // 初始化模块
+  const authManager = new AuthManager(supabase);
+  const tracker = new Tracker(supabase);
+  tracker.initMap();
+
+  // 表单事件绑定
+  document.getElementById('login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    try {
+      await authManager.login(
+        document.getElementById('login-email').value,
+        document.getElementById('login-password').value
+      );
+    } catch (error) {
+      UI.showToast(error.message, 'error');
     }
-    const totalSecondsPerKm = Math.floor(msPerKm / 1000);
-    const minutes = Math.floor(totalSecondsPerKm / 60);
-    const seconds = totalSecondsPerKm % 60;
-    return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
+  });
 
-// --- Authentication Logic ---
-document.addEventListener('DOMContentLoaded', function() {
-    // Initialize the map
-    initializeMap();
+  document.getElementById('register').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('register-password').value;
+    const confirm = document.getElementById('register-confirm-password').value;
 
-    // Show authentication forms
-    const authContainer = document.getElementById('auth-container');
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-    const showRegisterLink = document.getElementById('show-register');
-    const showLoginLink = document.getElementById('show-login');
-
-    // Toggle form display
-    showRegisterLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        loginForm.style.display = 'none';
-        registerForm.style.display = 'block';
-    });
-
-    showLoginLink.addEventListener('click', function(e) {
-        e.preventDefault();
-        registerForm.style.display = 'none';
-        loginForm.style.display = 'block';
-    });
-
-    // Login logic
-    document.getElementById('login').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const email = document.getElementById('login-email').value;
-        const password = document.getElementById('login-password').value;
-
-        supabase.auth.signInWithPassword({
-            email: email,
-            password: password
-        }).then(response => {
-            if (response.error) {
-                alert('Login failed: ' + response.error.message);
-            } else {
-                // Insert user data into the database
-                supabase.from('users').upsert([
-                    { email: email, last_login: new Date().toISOString() }
-                ]).then(result => {
-                    if (result.error) {
-                        console.error('Error inserting user data:', result.error);
-                    } else {
-                        console.log('User data inserted successfully');
-                    }
-                });
-
-                authContainer.style.display = 'none';
-                startTracking();
-            }
-        });
-    });
-
-    // Register logic
-    document.getElementById('register').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const email = document.getElementById('register-email').value;
-        const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('register-confirm-password').value;
-
-        if (password !== confirmPassword) {
-            alert('Passwords do not match');
-            return;
-        }
-
-        supabase.auth.signUp({
-            email: email,
-            password: password
-        }).then(response => {
-            if (response.error) {
-                alert('Registration failed: ' + response.error.message);
-            } else {
-                // Insert user data into the database
-                supabase.from('users').insert([
-                    { email: email, created_at: new Date().toISOString() }
-                ]).then(result => {
-                    if (result.error) {
-                        console.error('Error inserting user data:', result.error);
-                    } else {
-                        console.log('User data inserted successfully');
-                    }
-                });
-
-                alert('Registration successful! Please check your email to confirm.');
-                registerForm.style.display = 'none';
-                loginForm.style.display = 'block';
-            }
-        });
-    });
-
-    // Check if user is already authenticated
-    supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN') {
-            authContainer.style.display = 'none';
-            startTracking();
-        } else if (event === 'SIGNED_OUT') {
-            authContainer.style.display = 'flex';
-        }
-    });
-
-    // Add event listeners for tracking buttons
-    startButton.addEventListener('click', startTracking);
-    stopButton.addEventListener('click', stopTracking);
-    resetButton.addEventListener('click', resetTracking);
-
-    // Initialize UI state
-    updateUIState();
-
-    // --- PWA Service Worker Registration ---
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/service-worker.js')
-            .then(registration => {
-                console.log('ServiceWorker registration successful with scope: ', registration.scope);
-            })
-            .catch(error => {
-                console.log('ServiceWorker registration failed: ', error);
-            });
-    } else {
-        console.log('Service Worker not supported by this browser.');
+    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password)) {
+      UI.showToast('密码需至少8位且包含字母和数字', 'error');
+      return;
     }
+
+    if (password !== confirm) {
+      UI.showToast('两次密码输入不一致', 'error');
+      return;
+    }
+
+    try {
+      await authManager.register(
+        document.getElementById('register-email').value,
+        password
+      );
+      UI.showToast('注册成功，请检查邮箱验证！');
+      document.getElementById('register').reset();
+    } catch (error) {
+      UI.showToast(error.message, 'error');
+    }
+  });
+
+  // 按钮事件
+  UI.elements.startButton.addEventListener('click', () => tracker.start());
+  UI.elements.stopButton.addEventListener('click', () => tracker.stop());
+  UI.elements.resetButton.addEventListener('click', () => tracker.reset());
+
+  // 初始化 Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(reg => console.log('SW registered:', reg))
+      .catch(err => console.error('SW注册失败:', err));
+  }
 });
