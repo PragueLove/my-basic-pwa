@@ -277,6 +277,61 @@ document.addEventListener('DOMContentLoaded', async () => {
     const password = document.getElementById('register-password').value;
     const confirm = document.getElementById('register-confirm-password').value;
 
+
+document.getElementById('register').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  // 获取表单输入值
+  const email = document.getElementById('register-email').value;
+  const password = document.getElementById('register-password').value;
+  const confirmPassword = document.getElementById('register-confirm-password').value;
+
+  try {
+    // 1. 验证密码是否匹配
+    if (password !== confirmPassword) {
+      throw new Error('两次输入的密码不一致');
+    }
+
+    // 2. 密码复杂度验证
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      throw new Error('密码需至少8位，包含字母和数字');
+    }
+
+    // 3. 调用Supabase注册
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.href // 邮箱验证后重定向到当前页面
+      }
+    });
+
+    // 4. 处理注册结果
+    if (error) throw error;
+    
+    // 显示成功提示
+    UI.showToast('注册成功！请检查邮箱验证邮件', 'success');
+    
+    // 自动跳转到登录表单
+    document.getElementById('register-form').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('register').reset();
+
+  } catch (error) {
+    // 统一错误处理
+    console.error('注册失败:', error);
+    UI.showToast(`注册失败: ${error.message}`, 'error');
+    
+    // 高亮错误字段（可选）
+    if (error.message.includes('密码')) {
+      document.getElementById('register-password').classList.add('error-field');
+      document.getElementById('register-confirm-password').classList.add('error-field');
+    }
+  }
+});
+
+    
     if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$/.test(password)) {
       UI.showToast('密码需至少8位且包含字母和数字', 'error');
       return;
