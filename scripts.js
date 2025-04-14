@@ -8,6 +8,11 @@ const startButton = document.getElementById('startButton');
 const stopButton = document.getElementById('stopButton');
 const resetButton = document.getElementById('resetButton');
 
+// 初始化 Supabase
+const SUPABASE_URL = "https://your-project-url.supabase.co";
+const SUPABASE_KEY = "your-anon-key";
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // --- App State ---
 let map = null;
 let polyline = null;
