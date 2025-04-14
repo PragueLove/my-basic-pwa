@@ -56,25 +56,34 @@ class AuthManager {
       if (authData.user) {
         const { error: profileError } = await this.supabase
           .from('users')
-          .insert([
-            {
-              id: authData.user.id,
-              email: email,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            }
-          ]);
+          .insert({
+            id: authData.user.id,
+            email: email,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
 
         if (profileError) {
           console.error('创建用户配置文件失败:', profileError);
-          // 注意：即使配置文件创建失败，我们仍然允许用户注册完成
-          // 因为用户认证已经成功，配置文件可以稍后创建
+          // 如果是违反唯一约束，说明用户记录已存在
+          if (profileError.code === '23505') {
+            return { success: true, message: '注册成功！请查收验证邮件。' };
+          }
+          // 其他错误则抛出
+          throw profileError;
         }
       }
 
       return { success: true, message: '注册成功！请查收验证邮件。' };
     } catch (error) {
       console.error('注册失败:', error);
+      if (error.message.includes('User already registered')) {
+        throw new Error('该邮箱已被注册，请直接登录或使用其他邮箱。');
+      }
+      // 如果是 RLS 策略错误，给出更友好的提示
+      if (error.message.includes('new row violates row-level security policy')) {
+        throw new Error('注册失败：系统权限配置问题，请联系管理员。');
+      }
       throw new Error(error.message || '注册失败，请稍后重试');
     }
   }
