@@ -4,7 +4,33 @@
     <meta charset="UTF-8">
     <!-- 增强的视口设置 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>运动追踪器 - 登录</title>
+    <title>运动追踪器</title>
+    <script>
+        // 检查用户是否已登录
+        const checkAuth = async () => {
+            try {
+                const { createClient } = supabase;
+                const supabaseClient = createClient(
+                    'https://xyzcompany.supabase.co',  // 替换为你的 Supabase URL
+                    'public-anon-key'  // 替换为你的公共匿名密钥
+                );
+                
+                const { data: { session } } = await supabaseClient.auth.getSession();
+                
+                if (session) {
+                    // 已登录用户直接进入主应用
+                    window.location.href = './main.html';
+                } else {
+                    // 未登录用户进入引导页
+                    window.location.href = './onboarding.html';
+                }
+            } catch (error) {
+                // 发生错误时默认进入引导页
+                window.location.href = './onboarding.html';
+            }
+        };
+    </script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
 
     <!-- PWA 增强配置 -->
     <link rel="manifest" href="manifest.json">
@@ -24,9 +50,16 @@
     <!-- 本地样式 -->
     <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body onload="checkAuth()">
+    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5;">
+        <div style="text-align: center;">
+            <h1>正在加载...</h1>
+            <p>请稍候，我们正在为您准备最佳体验</p>
+        </div>
+    </div>
+
+    <!-- 登录表单 -->
     <div class="auth-container">
-        <!-- 登录表单 -->
         <div class="auth-card" id="login-form">
             <h2>登录</h2>
             <div class="special-offer-banner">
