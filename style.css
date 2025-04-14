@@ -151,24 +151,24 @@ body {
 
 /* 认证模块 */
 .auth-container {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: grid;
-  place-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
   padding: 1rem;
-  z-index: 1000;
+  background: var(--color-bg);
 }
 
 .auth-card {
   background: white;
   padding: 2rem;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
-  width: min(100%, 400px);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  width: 100%;
+  max-width: 400px;
 }
 
-.auth-card__title {
+.auth-card h2 {
   margin-bottom: 1.5rem;
   color: var(--color-primary);
   text-align: center;
@@ -178,23 +178,68 @@ body {
   margin-bottom: 1rem;
 }
 
-.form-label {
+.form-group label {
   display: block;
   margin-bottom: 0.5rem;
-  font-size: 0.9em;
+  color: var(--color-text);
 }
 
-.form-input {
+.form-group input {
   width: 100%;
-  padding: 0.75em;
-  border: 1px solid #ddd;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  transition: border-color 0.2s ease;
+  font-size: 1rem;
 }
 
-.form-input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
+.form-group input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+}
+
+.auth-switch {
+  margin-top: 1rem;
+  text-align: center;
+  color: var(--color-text-light);
+}
+
+.auth-switch a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* 按钮加载状态 */
+.btn.loading {
+  position: relative;
+  color: transparent !important;
+}
+
+.btn.loading::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 1em;
+  height: 1em;
+  margin: -0.5em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: button-loading-spinner 0.75s linear infinite;
+}
+
+@keyframes button-loading-spinner {
+  from {
+    transform: rotate(0turn);
+  }
+  to {
+    transform: rotate(1turn);
+  }
 }
 
 /* 页脚 */
@@ -283,32 +328,6 @@ body {
   color: #e74c3c;
   font-size: 0.875em;
   margin-top: 4px;
-}
-
-/* 加载状态 */
-.btn.loading {
-  color: transparent !important;
-  pointer-events: none;
-}
-
-.btn.loading::after {
-  content: '';
-  position: absolute;
-  width: 1em;
-  height: 1em;
-  border: 2px solid;
-  border-radius: 50%;
-  border-color: #fff #fff #fff transparent;
-  animation: button-loading-spinner 0.75s linear infinite;
-}
-
-@keyframes button-loading-spinner {
-  from {
-    transform: rotate(0turn);
-  }
-  to {
-    transform: rotate(1turn);
-  }
 }
 
 /* 头部控制按钮 */

@@ -158,8 +158,13 @@ class UI {
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化Supabase客户端
-  const supabaseUrl = 'YOUR_SUPABASE_URL';
-  const supabaseKey = 'YOUR_SUPABASE_KEY';
+  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';  // 替换为您的 Supabase URL
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';  // 替换为您的 Supabase Anon Key
+  
+  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_PROJECT_ID')) {
+    UI.showError('请先配置 Supabase 密钥！');
+    return;
+  }
   
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
   const authManager = new AuthManager(supabase);
@@ -241,14 +246,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 表单切换处理
   document.getElementById('show-register').addEventListener('click', (e) => {
     e.preventDefault();
-    document.getElementById('login-form').style.display = 'none';
-    document.getElementById('register-form').style.display = 'block';
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    loginForm.hidden = true;
+    registerForm.hidden = false;
   });
 
   document.getElementById('show-login').addEventListener('click', (e) => {
     e.preventDefault();
-    document.getElementById('login-form').style.display = 'block';
-    document.getElementById('register-form').style.display = 'none';
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    loginForm.hidden = false;
+    registerForm.hidden = true;
   });
 
   // 重新发送验证邮件
