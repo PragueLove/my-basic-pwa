@@ -28,6 +28,46 @@
         <h1>Sports Tracker</h1>
     </header>
 
+    <!-- 登录和注册表单 -->
+    <div id="auth-container" class="auth-container">
+        <div id="login-form" class="auth-form">
+            <h2>Login</h2>
+            <form id="login">
+                <div class="form-group">
+                    <label for="login-email">Email</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">Password</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn">Login</button>
+                <p>Don't have an account? <a href="#" id="show-register">Register</a></p>
+            </form>
+        </div>
+
+        <div id="register-form" class="auth-form" style="display: none;">
+            <h2>Register</h2>
+            <form id="register">
+                <div class="form-group">
+                    <label for="register-email">Email</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">Password</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm-password">Confirm Password</label>
+                    <input type="password" id="register-confirm-password" required>
+                </div>
+                <button type="submit" class="btn">Register</button>
+                <p>Already have an account? <a href="#" id="show-login">Login</a></p>
+            </form>
+        </div>
+    </div>
+
+    
     <main>
         <div id="map"></div>
         <div id="info-panel">
