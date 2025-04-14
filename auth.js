@@ -225,6 +225,28 @@ if (session) {
   return;
 }
 
+// 登录表单处理
+const loginForm = document.getElementById('login');
+loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('login-email').value;
+  const password = document.getElementById('login-password').value;
+
+  try {
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.classList.add('loading');
+
+    await authManager.login(email, password);
+  } catch (error) {
+    alert('登录失败：' + error.message);
+  } finally {
+    const submitButton = loginForm.querySelector('button[type="submit"]');
+    submitButton.disabled = false;
+    submitButton.classList.remove('loading');
+  }
+});
+
 // 注册表单处理
 const registerForm = document.getElementById('register');
 registerForm.addEventListener('submit', async (e) => {
@@ -233,24 +255,8 @@ registerForm.addEventListener('submit', async (e) => {
   const password = document.getElementById('register-password').value;
   const confirmPassword = document.getElementById('register-confirm-password').value;
 
-  // 表单验证
-  if (!email || !password || !confirmPassword) {
-    alert('请填写所有必填字段！');
-    return;
-  }
-
-  if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-    alert('请输入有效的邮箱地址！');
-    return;
-  }
-
-  if (password.length < 6) {
-    alert('密码长度至少需要6个字符！');
-    return;
-  }
-
   if (password !== confirmPassword) {
-    alert('两次输入的密码不一致！');
+    alert('两次输入的密码不一致');
     return;
   }
 
@@ -291,28 +297,6 @@ registerForm.addEventListener('submit', async (e) => {
   }
 });
 
-// 登录表单处理
-const loginForm = document.getElementById('login');
-loginForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('login-email').value;
-  const password = document.getElementById('login-password').value;
-
-  try {
-    const submitButton = loginForm.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.classList.add('loading');
-
-    await authManager.login(email, password);
-  } catch (error) {
-    alert(error.message);
-  } finally {
-    const submitButton = loginForm.querySelector('button[type="submit"]');
-    submitButton.disabled = false;
-    submitButton.classList.remove('loading');
-  }
-});
-
 // 表单切换处理
 document.getElementById('show-register').addEventListener('click', (e) => {
   e.preventDefault();
@@ -336,7 +320,7 @@ document.getElementById('resend-verification').addEventListener('click', async (
   const email = document.getElementById('register-email').value;
   
   if (!email) {
-    alert('请先输入邮箱地址！');
+    alert('请先输入邮箱地址');
     return;
   }
 
@@ -344,6 +328,28 @@ document.getElementById('resend-verification').addEventListener('click', async (
     const result = await authManager.resendVerificationEmail(email);
     alert(result.message);
   } catch (error) {
-    alert(error.message);
+    alert('发送失败：' + error.message);
   }
-}); 
+});
+
+// 检查登录状态
+async function checkAuth() {
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (user) {
+    // 如果在登录或注册页面，且已登录，则跳转到主页
+    if (window.location.pathname.includes('login.html') || 
+        window.location.pathname.includes('register.html')) {
+      window.location.href = './index.html';
+    }
+  } else {
+    // 如果在需要认证的页面，且未登录，则跳转到登录页
+    if (!window.location.pathname.includes('login.html') && 
+        !window.location.pathname.includes('register.html')) {
+      window.location.href = './login.html';
+    }
+  }
+}
+
+// 页面加载时检查认证状态
+window.addEventListener('load', checkAuth); 

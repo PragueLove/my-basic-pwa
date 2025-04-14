@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>运动追踪器 - 注册</title>
+
+    <!-- PWA 增强配置 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#3498db">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sports Tracker">
+    <link rel="apple-touch-icon" href="images/icons/icon-192x192.png">
+    <link rel="icon" type="image/png" href="icons/icon-192x192.png">
+
+    <!-- 本地样式 -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <!-- 注册表单 -->
+        <div class="auth-card">
+            <h2>注册</h2>
+            <div class="special-offer-banner">
+                <p>🎉 新用户专享：注册即可获得30天专业版免费试用</p>
+            </div>
+            <form id="register">
+                <div class="form-group">
+                    <label for="register-email">邮箱</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm-password">确认密码</label>
+                    <input type="password" id="register-confirm-password" required>
+                </div>
+                <button type="submit" class="btn btn--primary">注册</button>
+            </form>
+            <p class="auth-switch">
+                已有账号？<a href="./login.html">立即登录</a>
+            </p>
+            <p class="auth-switch">
+                <a href="#" id="resend-verification">重新发送验证邮件</a>
+            </p>
+        </div>
+    </div>
+
+    <!-- 依赖库 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+
+    <!-- Service Worker 注册 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(reg => console.log('Service Worker注册成功:', reg))
+                .catch(err => console.error('Service Worker注册失败:', err));
+        }
+    </script>
+</body>
+</html> 
