@@ -40,22 +40,43 @@ class AuthManager {
    * @param {string} password - 密码
    */
   async register(email, password) {
-    const { data, error } = await this.supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin + '/index.html'
+    try {
+      // 1. 注册用户
+      const { data: authData, error: authError } = await this.supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/index.html?verified=true`
+        }
+      });
+
+      if (authError) throw authError;
+
+      // 2. 创建用户配置文件
+      if (authData.user) {
+        const { error: profileError } = await this.supabase
+          .from('users')
+          .insert([
+            {
+              id: authData.user.id,
+              email: email,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            }
+          ]);
+
+        if (profileError) {
+          console.error('创建用户配置文件失败:', profileError);
+          // 注意：即使配置文件创建失败，我们仍然允许用户注册完成
+          // 因为用户认证已经成功，配置文件可以稍后创建
+        }
       }
-    });
 
-    if (error) throw error;
-
-    // 如果注册成功，立即同步用户数据到 users 表
-    if (data.user) {
-      await this.handleUserSync(data.user);
+      return { success: true, message: '注册成功！请查收验证邮件。' };
+    } catch (error) {
+      console.error('注册失败:', error);
+      throw new Error(error.message || '注册失败，请稍后重试');
     }
-
-    return data;
   }
 
   /**
@@ -67,7 +88,7 @@ class AuthManager {
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: window.location.origin + '/auth.html'
+        emailRedirectTo: `${window.location.origin}/index.html?verified=true`
       }
     });
     
@@ -158,11 +179,11 @@ class UI {
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化Supabase客户端
-  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';  // 替换为您的 Supabase URL
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';  // 替换为您的 Supabase Anon Key
+  const supabaseUrl = 'YOUR_SUPABASE_URL';  // 替换为您的 Supabase URL
+  const supabaseKey = 'YOUR_ANON_KEY';  // 替换为您的 Supabase Anon Key
   
-  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_PROJECT_ID')) {
-    UI.showError('请先配置 Supabase 密钥！');
+  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_SUPABASE_URL')) {
+    console.error('请先配置 Supabase 密钥！');
     return;
   }
   
@@ -175,51 +196,36 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // 注册表单提交处理
-  document.getElementById('register').addEventListener('submit', async (e) => {
+  const registerForm = document.getElementById('register');
+  registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const form = e.target;
-    const submitButton = form.querySelector('button[type="submit"]');
-    
+    const email = document.getElementById('register-email').value;
+    const password = document.getElementById('register-password').value;
+    const confirmPassword = document.getElementById('register-confirm-password').value;
+
+    // 验证密码
+    if (password !== confirmPassword) {
+      alert('两次输入的密码不一致！');
+      return;
+    }
+
     try {
-      UI.setLoading(submitButton, true);
+      const submitButton = registerForm.querySelector('button[type="submit"]');
+      submitButton.disabled = true;
+      submitButton.classList.add('loading');
 
-      const email = document.getElementById('register-email').value;
-      const password = document.getElementById('register-password').value;
-      const confirmPassword = document.getElementById('register-confirm-password').value;
-
-      // 表单验证
-      if (!email || !password || !confirmPassword) {
-        throw new Error('请填写所有必填字段');
-      }
-
-      if (password !== confirmPassword) {
-        throw new Error('两次输入的密码不一致');
-      }
-
-      if (password.length < 8) {
-        throw new Error('密码长度至少为8位');
-      }
-
-      // 执行注册
       const result = await authManager.register(email, password);
+      alert(result.message);
       
-      if (result.data?.user) {
-        UI.showSuccess('注册成功！请检查邮箱完成验证');
-        
-        // 切换到登录表单
-        document.getElementById('register-form').style.display = 'none';
-        document.getElementById('login-form').style.display = 'block';
-        
-        // 重置表单
-        form.reset();
-      } else {
-        throw new Error('注册失败，请重试');
-      }
+      // 注册成功后切换到登录表单
+      document.getElementById('register-form').hidden = true;
+      document.getElementById('login-form').hidden = false;
     } catch (error) {
-      console.error('注册失败:', error);
-      UI.showError(error.message);
+      alert(error.message);
     } finally {
-      UI.setLoading(submitButton, false);
+      const submitButton = registerForm.querySelector('button[type="submit"]');
+      submitButton.disabled = false;
+      submitButton.classList.remove('loading');
     }
   });
 

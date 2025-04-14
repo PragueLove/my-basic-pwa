@@ -83,6 +83,25 @@
                 .then(reg => console.log('Service Worker注册成功:', reg))
                 .catch(err => console.error('Service Worker注册失败:', err));
         }
+
+        // 检查是否是验证邮箱后的重定向
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('verified') === 'true') {
+                const toast = document.createElement('div');
+                toast.className = 'toast success';
+                toast.textContent = '邮箱验证成功！请登录您的账号。';
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 5000);
+                
+                // 确保显示登录表单
+                document.getElementById('login-form').hidden = false;
+                document.getElementById('register-form').hidden = true;
+                
+                // 清除 URL 参数
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        });
     </script>
 </body>
 </html>
