@@ -418,11 +418,19 @@ class UI {
    * @param {boolean} loading - 是否显示加载状态
    */
   static setLoading(button, loading) {
+    if (!button) return;
+    
     if (loading) {
+      // 保存原始文本
+      if (!button.getAttribute('data-original-text')) {
+        button.setAttribute('data-original-text', button.textContent);
+      }
       button.disabled = true;
+      button.classList.add('loading');
       button.textContent = '处理中...';
     } else {
       button.disabled = false;
+      button.classList.remove('loading');
       button.textContent = button.getAttribute('data-original-text') || button.textContent;
     }
   }
@@ -461,10 +469,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   // 注册表单提交处理
   document.getElementById('register').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const submitButton = e.target.querySelector('button[type="submit"]');
-    UI.setLoading(submitButton, true);
-
+    const form = e.target;
+    const submitButton = form.querySelector('button[type="submit"]');
+    
     try {
+      UI.setLoading(submitButton, true);
+
       const email = document.getElementById('register-email').value;
       const password = document.getElementById('register-password').value;
       const confirmPassword = document.getElementById('register-confirm-password').value;
@@ -483,17 +493,21 @@ document.addEventListener('DOMContentLoaded', async () => {
       }
 
       // 执行注册
-      await authManager.register(email, password);
+      const result = await authManager.register(email, password);
       
-      // 注册成功提示
-      UI.showToast('注册成功！请检查邮箱完成验证', 'success');
-      
-      // 切换到登录表单
-      document.getElementById('register-form').style.display = 'none';
-      document.getElementById('login-form').style.display = 'block';
-      
-      // 重置表单
-      e.target.reset();
+      if (result.data?.user) {
+        // 注册成功提示
+        UI.showToast('注册成功！请检查邮箱完成验证', 'success');
+        
+        // 切换到登录表单
+        document.getElementById('register-form').style.display = 'none';
+        document.getElementById('login-form').style.display = 'block';
+        
+        // 重置表单
+        form.reset();
+      } else {
+        throw new Error('注册失败，请重试');
+      }
     } catch (error) {
       console.error('注册失败:', error);
       UI.showError(error.message);
