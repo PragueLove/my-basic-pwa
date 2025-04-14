@@ -8,15 +8,10 @@ const startButton = document.getElementById('startButton');
 const stopButton = document.getElementById('stopButton');
 const resetButton = document.getElementById('resetButton');
 
-// 初始化 Supabase
-const SUPABASE_URL = "https://your-project-url.supabase.co";
-const SUPABASE_KEY = "your-anon-key";
+// --- Supabase Configuration ---
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_KEY;
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_KEY
-);
 
 // --- App State ---
 let map = null;
@@ -108,11 +103,16 @@ function handlePositionUpdate(position) {
     const { latitude, longitude, accuracy } = position.coords;
     const timestamp = position.timestamp;
 
-    // Optional: Filter out inaccurate points
-    // if (accuracy > 50) {
-    //     console.log(`Skipping inaccurate point (accuracy: ${accuracy}m)`);
-    //     return;
-    // }
+    // Insert position data into the database
+    supabase.from('positions').insert([
+        { lat: latitude, lng: longitude, accuracy: accuracy, timestamp: timestamp }
+    ]).then(result => {
+        if (result.error) {
+            console.error('Error inserting position data:', result.error);
+        } else {
+            console.log('Position data inserted successfully');
+        }
+    });
 
     const newPoint = { lat: latitude, lng: longitude, timestamp: timestamp };
     positions.push(newPoint);
@@ -122,7 +122,7 @@ function handlePositionUpdate(position) {
     polyline.addLatLng(latLng);
 
     // Center map on the new position (optional, can be annoying)
-     map.setView(latLng, map.getZoom()); // Adjust zoom level as needed
+    map.setView(latLng, map.getZoom()); // Adjust zoom level as needed
 
     // Calculate distance from the previous point
     if (positions.length > 1) {
@@ -178,10 +178,7 @@ function updatePace() {
     }
 }
 
-
 // --- Helper Functions ---
-
-// Calculate distance between two lat/lng points using Haversine formula (in kilometers)
 function calculateDistance(lat1, lon1, lat2, lon2) {
     const R = 6371; // Radius of the Earth in km
     const dLat = deg2rad(lat2 - lat1);
@@ -199,7 +196,6 @@ function deg2rad(deg) {
     return deg * (Math.PI / 180);
 }
 
-// Format duration from milliseconds to HH:MM:SS
 function formatDuration(ms) {
     if (ms < 0) ms = 0;
     const totalSeconds = Math.floor(ms / 1000);
@@ -210,7 +206,6 @@ function formatDuration(ms) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-// Format pace from milliseconds per km to MM:SS min/km
 function formatPace(msPerKm) {
     if (!isFinite(msPerKm) || msPerKm <= 0) {
         return '--:--';
@@ -221,16 +216,115 @@ function formatPace(msPerKm) {
     return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-
-// --- Initialization ---
-window.addEventListener('load', () => {
+// --- Authentication Logic ---
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize the map
     initializeMap();
-    updateUIState(); // Set initial button states
 
-    // Add event listeners
+    // Show authentication forms
+    const authContainer = document.getElementById('auth-container');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const showRegisterLink = document.getElementById('show-register');
+    const showLoginLink = document.getElementById('show-login');
+
+    // Toggle form display
+    showRegisterLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        loginForm.style.display = 'none';
+        registerForm.style.display = 'block';
+    });
+
+    showLoginLink.addEventListener('click', function(e) {
+        e.preventDefault();
+        registerForm.style.display = 'none';
+        loginForm.style.display = 'block';
+    });
+
+    // Login logic
+    document.getElementById('login').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+
+        supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        }).then(response => {
+            if (response.error) {
+                alert('Login failed: ' + response.error.message);
+            } else {
+                // Insert user data into the database
+                supabase.from('users').upsert([
+                    { email: email, last_login: new Date().toISOString() }
+                ]).then(result => {
+                    if (result.error) {
+                        console.error('Error inserting user data:', result.error);
+                    } else {
+                        console.log('User data inserted successfully');
+                    }
+                });
+
+                authContainer.style.display = 'none';
+                startTracking();
+            }
+        });
+    });
+
+    // Register logic
+    document.getElementById('register').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('register-email').value;
+        const password = document.getElementById('register-password').value;
+        const confirmPassword = document.getElementById('register-confirm-password').value;
+
+        if (password !== confirmPassword) {
+            alert('Passwords do not match');
+            return;
+        }
+
+        supabase.auth.signUp({
+            email: email,
+            password: password
+        }).then(response => {
+            if (response.error) {
+                alert('Registration failed: ' + response.error.message);
+            } else {
+                // Insert user data into the database
+                supabase.from('users').insert([
+                    { email: email, created_at: new Date().toISOString() }
+                ]).then(result => {
+                    if (result.error) {
+                        console.error('Error inserting user data:', result.error);
+                    } else {
+                        console.log('User data inserted successfully');
+                    }
+                });
+
+                alert('Registration successful! Please check your email to confirm.');
+                registerForm.style.display = 'none';
+                loginForm.style.display = 'block';
+            }
+        });
+    });
+
+    // Check if user is already authenticated
+    supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_IN') {
+            authContainer.style.display = 'none';
+            startTracking();
+        } else if (event === 'SIGNED_OUT') {
+            authContainer.style.display = 'flex';
+        }
+    });
+
+    // Add event listeners for tracking buttons
     startButton.addEventListener('click', startTracking);
     stopButton.addEventListener('click', stopTracking);
     resetButton.addEventListener('click', resetTracking);
+
+    // Initialize UI state
+    updateUIState();
 
     // --- PWA Service Worker Registration ---
     if ('serviceWorker' in navigator) {
