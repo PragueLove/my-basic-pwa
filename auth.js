@@ -50,10 +50,16 @@ class AuthManager {
         }
       });
 
-      if (authError) throw authError;
+      if (authError) {
+        console.error('认证错误:', authError);
+        if (authError.status === 401) {
+          throw new Error('认证失败：请检查 Supabase 配置是否正确');
+        }
+        throw authError;
+      }
 
       // 2. 创建用户配置文件
-      if (authData.user) {
+      if (authData?.user) {
         const { error: profileError } = await this.supabase
           .from('users')
           .insert({
@@ -69,21 +75,32 @@ class AuthManager {
           if (profileError.code === '23505') {
             return { success: true, message: '注册成功！请查收验证邮件。' };
           }
-          // 其他错误则抛出
+          // 如果是权限问题
+          if (profileError.code === '42501') {
+            throw new Error('注册失败：数据库权限配置问题，请联系管理员。');
+          }
           throw profileError;
         }
+      } else {
+        throw new Error('注册失败：未能创建用户账号');
       }
 
       return { success: true, message: '注册成功！请查收验证邮件。' };
     } catch (error) {
       console.error('注册失败:', error);
+      
+      // 处理常见错误
       if (error.message.includes('User already registered')) {
         throw new Error('该邮箱已被注册，请直接登录或使用其他邮箱。');
       }
-      // 如果是 RLS 策略错误，给出更友好的提示
       if (error.message.includes('new row violates row-level security policy')) {
         throw new Error('注册失败：系统权限配置问题，请联系管理员。');
       }
+      if (error.status === 401) {
+        throw new Error('认证失败：请检查 Supabase 配置是否正确');
+      }
+      
+      // 其他错误
       throw new Error(error.message || '注册失败，请稍后重试');
     }
   }
@@ -188,11 +205,11 @@ class UI {
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化Supabase客户端
-  const supabaseUrl = 'YOUR_SUPABASE_URL';  // 替换为您的 Supabase URL
-  const supabaseKey = 'YOUR_ANON_KEY';  // 替换为您的 Supabase Anon Key
+  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';
+  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';
   
-  if (!supabaseUrl || !supabaseKey || supabaseUrl.includes('YOUR_SUPABASE_URL')) {
-    console.error('请先配置 Supabase 密钥！');
+  if (!supabaseUrl || !supabaseKey) {
+    UI.showError('Supabase 配置错误！');
     return;
   }
   
