@@ -80,7 +80,7 @@ class AuthManager {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.href
+        emailRedirectTo: `${window.location.origin}/index.html`  // 使用完整的URL
       }
     });
 
@@ -92,6 +92,23 @@ class AuthManager {
     }
 
     return data;
+  }
+
+  /**
+   * 重新发送验证邮件
+   * @param {string} email - 用户邮箱
+   */
+  async resendVerificationEmail(email) {
+    const { error } = await this.supabase.auth.resend({
+      type: 'signup',
+      email: email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/index.html`
+      }
+    });
+    
+    if (error) throw error;
+    return { success: true };
   }
 }
 
@@ -466,6 +483,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   UI.elements.startButton.addEventListener('click', () => tracker.start());
   UI.elements.stopButton.addEventListener('click', () => tracker.stop());
   UI.elements.resetButton.addEventListener('click', () => tracker.reset());
+
+  // 添加重新发送验证邮件按钮的事件监听
+  document.getElementById('resend-verification').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('register-email').value;
+    try {
+      await authManager.resendVerificationEmail(email);
+      UI.showToast('验证邮件已重新发送，请查收', 'success');
+    } catch (error) {
+      UI.showToast(`发送失败: ${error.message}`, 'error');
+    }
+  });
 
   // 注册Service Worker
   if ('serviceWorker' in navigator) {
