@@ -29,13 +29,25 @@ class AuthManager {
    * @param {object} user - 用户对象
    */
   async handleUserSync(user) {
-    const { error } = await this.supabase.from('users').upsert({
-      id: user.id,
-      email: user.email,
-      last_login: new Date().toISOString()
-    }, { onConflict: 'id' });  // 使用ID作为冲突解决依据
+    try {
+      const { error } = await this.supabase
+        .from('users')
+        .upsert({
+          id: user.id,
+          email: user.email,
+          created_at: new Date().toISOString(),
+          last_login: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        });
 
-    if (error) console.error('用户数据同步失败:', error);
+      if (error) {
+        console.error('用户数据同步失败:', error);
+        throw error;
+      }
+    } catch (error) {
+      console.error('同步用户数据时出错:', error);
+      UI.showToast('用户数据同步失败', 'error');
+    }
   }
 
   /**
@@ -68,10 +80,17 @@ class AuthManager {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.href  // 邮箱验证后跳转地址
+        emailRedirectTo: window.location.href
       }
     });
+
     if (error) throw error;
+
+    // 如果注册成功，立即同步用户数据到 users 表
+    if (data.user) {
+      await this.handleUserSync(data.user);
+    }
+
     return data;
   }
 }
@@ -366,8 +385,8 @@ class UI {
 // ==== 初始化流程 ====
 document.addEventListener('DOMContentLoaded', async () => {
   // 初始化Supabase客户端
-  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';  // 替换为您的 Supabase URL
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';  // 替换为您的 Supabase anon key
+  const supabaseUrl = 'YOUR_SUPABASE_URL';  // 替换为您的 Supabase URL
+  const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';  // 替换为您的 Supabase anon key
   
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
