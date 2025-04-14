@@ -1,18 +1,18 @@
 // Service Worker for Sports Tracker PWA
 
 // Increment version number when you update the app shell files
-const CACHE_NAME = 'sports-tracker-pwa-cache-v2';
+const CACHE_NAME = 'sports-tracker-v2';
 // Core files to cache (App Shell)
-const urlsToCache = [
-  './',
-  './index.html',
-  './main.html',
-  './style.css',
-  './app.js',
-  './auth.js',
-  './manifest.json',
-  './images/icons/icon-192x192.png',
-  './images/icons/icon-512x512.png'
+const CACHE_URLS = [
+  '/',
+  '/index.html',
+  '/main.html',
+  '/style.css',
+  '/app.js',
+  '/auth.js',
+  '/manifest.json',
+  '/icons/icon-192x192.png',
+  '/icons/icon-512x512.png'
   // Note: We are NOT caching Leaflet's CDN files here.
   // Caching external resources can be complex (CORS, versioning).
   // The app will require internet for map tiles and the Leaflet library itself.
@@ -27,12 +27,11 @@ self.addEventListener('install', event => {
       .then(cache => {
         console.log('Service Worker: Caching app shell');
         // Use addAll for atomic caching
-        return cache.addAll(urlsToCache);
+        return cache.addAll(CACHE_URLS);
       })
       .then(() => {
         console.log('Service Worker: App shell cached successfully');
-        // Optional: Force immediate activation
-        // return self.skipWaiting();
+        return self.skipWaiting();
       })
       .catch(error => {
         console.error('Service Worker: Failed to cache app shell:', error);
@@ -57,8 +56,7 @@ self.addEventListener('activate', event => {
       );
     }).then(() => {
         console.log('Service Worker: Activated successfully');
-        // Optional: Take control of open pages immediately
-        // return self.clients.claim();
+        return self.clients.claim();
     })
   );
 });
@@ -93,4 +91,38 @@ self.addEventListener('fetch', event => {
         );
     }
     // Let the browser handle other requests (like CDN or API calls) normally
+
+    // 对于主页面，始终从网络获取最新版本
+    if (event.request.url.includes('main.html')) {
+        event.respondWith(
+            fetch(event.request)
+                .catch(error => {
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
+
+    // 对其他资源使用 Cache First 策略
+    event.respondWith(
+        caches.match(event.request)
+            .then(response => {
+                if (response) {
+                    return response;
+                }
+                return fetch(event.request)
+                    .then(response => {
+                        // 只缓存成功的响应
+                        if (!response || response.status !== 200 || response.type !== 'basic') {
+                            return response;
+                        }
+                        const responseToCache = response.clone();
+                        caches.open(CACHE_NAME)
+                            .then(cache => {
+                                cache.put(event.request, responseToCache);
+                            });
+                        return response;
+                    });
+            })
+    );
 });
