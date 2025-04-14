@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <!-- 增强的视口设置 -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-    <title>运动追踪器</title>
+    <title>运动追踪器 - 登录</title>
 
     <!-- PWA 增强配置 -->
     <link rel="manifest" href="manifest.json">
@@ -23,35 +23,66 @@
 
     <!-- 本地样式 -->
     <link rel="stylesheet" href="style.css">
-
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script>
-        // 检查用户是否已登录
-        const checkAuth = async () => {
-            const supabaseUrl = 'YOUR_SUPABASE_URL';
-            const supabaseKey = 'YOUR_SUPABASE_KEY';
-            const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-            
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                if (session) {
-                    window.location.href = './main.html';  // 修改路径
-                } else {
-                    window.location.href = './auth.html';  // 修改路径
-                }
-            } catch (error) {
-                console.error('认证检查失败:', error);
-                window.location.href = './auth.html';  // 修改路径
-            }
-        };
-
-        // 页面加载完成后立即检查
-        document.addEventListener('DOMContentLoaded', checkAuth);
-    </script>
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh;">
-        <p>正在加载...</p>
+    <div class="auth-container">
+        <!-- 登录表单 -->
+        <div class="auth-card" id="login-form">
+            <h2>登录</h2>
+            <form id="login">
+                <div class="form-group">
+                    <label for="login-email">邮箱</label>
+                    <input type="email" id="login-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="login-password">密码</label>
+                    <input type="password" id="login-password" required>
+                </div>
+                <button type="submit" class="btn btn--primary">登录</button>
+            </form>
+            <p class="auth-switch">
+                还没有账号？<a href="#" id="show-register">立即注册</a>
+            </p>
+        </div>
+
+        <!-- 注册表单 -->
+        <div class="auth-card" id="register-form" style="display: none;">
+            <h2>注册</h2>
+            <form id="register">
+                <div class="form-group">
+                    <label for="register-email">邮箱</label>
+                    <input type="email" id="register-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-password">密码</label>
+                    <input type="password" id="register-password" required>
+                </div>
+                <div class="form-group">
+                    <label for="register-confirm-password">确认密码</label>
+                    <input type="password" id="register-confirm-password" required>
+                </div>
+                <button type="submit" class="btn btn--primary">注册</button>
+            </form>
+            <p class="auth-switch">
+                已有账号？<a href="#" id="show-login">立即登录</a>
+            </p>
+            <p class="auth-switch">
+                <a href="#" id="resend-verification">重新发送验证邮件</a>
+            </p>
+        </div>
     </div>
+
+    <!-- 依赖库 -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+
+    <!-- Service Worker 注册 -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./service-worker.js')
+                .then(reg => console.log('Service Worker注册成功:', reg))
+                .catch(err => console.error('Service Worker注册失败:', err));
+        }
+    </script>
 </body>
 </html>

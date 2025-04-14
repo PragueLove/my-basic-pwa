@@ -44,7 +44,7 @@ class AuthManager {
       email,
       password,
       options: {
-        emailRedirectTo: window.location.origin + '/auth.html'
+        emailRedirectTo: window.location.origin + '/index.html'
       }
     });
 
@@ -276,5 +276,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     window.location.href = './main.html';
+    return;
   }
 }); 
