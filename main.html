@@ -96,27 +96,37 @@
     <script type="module" src="app.js"></script>
 
     <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const historyModal = document.getElementById('historyModal');
-        const closeButton = document.getElementById('closeHistoryModal');
+        // 等待 DOM 完全加载
+        window.addEventListener('load', () => {
+            const historyModal = document.getElementById('historyModal');
+            const closeButton = document.getElementById('closeHistoryModal');
+            const historyButton = document.getElementById('historyButton');
 
-        // 添加关闭按钮点击事件
-        closeButton.addEventListener('click', () => {
-            historyModal.hidden = true;
-        });
-
-        // 点击模态框外部区域关闭
-        historyModal.addEventListener('click', (e) => {
-            if (e.target === historyModal) {
-                historyModal.hidden = true;
+            if (!historyModal || !closeButton || !historyButton) {
+                console.error('无法找到必要的模态框元素');
+                return;
             }
-        });
 
-        // 添加打开模态框的功能
-        document.getElementById('historyButton').addEventListener('click', () => {
-            historyModal.hidden = false;
+            // 打开模态框
+            historyButton.onclick = () => {
+                historyModal.style.display = 'block';
+                historyModal.hidden = false;
+            };
+
+            // 关闭按钮点击事件
+            closeButton.onclick = () => {
+                historyModal.style.display = 'none';
+                historyModal.hidden = true;
+            };
+
+            // 点击模态框外部区域关闭
+            window.onclick = (event) => {
+                if (event.target === historyModal) {
+                    historyModal.style.display = 'none';
+                    historyModal.hidden = true;
+                }
+            };
         });
-    });
     </script>
 </body>
 </html> 
