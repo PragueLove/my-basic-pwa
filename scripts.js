@@ -80,7 +80,7 @@ class AuthManager {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/index.html`  // 使用完整的URL
+        emailRedirectTo: 'http://localhost:3000'  // 修改为本地开发环境URL
       }
     });
 
@@ -103,7 +103,7 @@ class AuthManager {
       type: 'signup',
       email: email,
       options: {
-        emailRedirectTo: `${window.location.origin}/index.html`
+        emailRedirectTo: 'http://localhost:3000'  // 修改为本地开发环境URL
       }
     });
     
