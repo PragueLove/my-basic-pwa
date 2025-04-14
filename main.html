@@ -30,7 +30,6 @@
         <header>
             <h1>运动追踪器</h1>
             <div class="header-controls">
-                <button id="historyButton" class="btn">历史记录</button>
                 <button id="logout" class="btn btn--warning">登出</button>
             </div>
         </header>
@@ -66,21 +65,6 @@
         </main>
     </div>
 
-    <!-- 历史记录模态框 -->
-    <div id="historyModal" class="modal" hidden>
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>运动历史</h2>
-                <button class="close-button" id="closeHistoryModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="historyList" class="history-list">
-                    <!-- 历史记录将通过JavaScript动态插入 -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- 页脚 -->
     <footer class="app-footer">
         <p class="footer-text">A progressive web app for sports tracking</p>
@@ -94,39 +78,5 @@
 
     <!-- 应用脚本 -->
     <script type="module" src="app.js"></script>
-
-    <script>
-        // 等待 DOM 完全加载
-        window.addEventListener('load', () => {
-            const historyModal = document.getElementById('historyModal');
-            const closeButton = document.getElementById('closeHistoryModal');
-            const historyButton = document.getElementById('historyButton');
-
-            if (!historyModal || !closeButton || !historyButton) {
-                console.error('无法找到必要的模态框元素');
-                return;
-            }
-
-            // 打开模态框
-            historyButton.onclick = () => {
-                historyModal.style.display = 'block';
-                historyModal.hidden = false;
-            };
-
-            // 关闭按钮点击事件
-            closeButton.onclick = () => {
-                historyModal.style.display = 'none';
-                historyModal.hidden = true;
-            };
-
-            // 点击模态框外部区域关闭
-            window.onclick = (event) => {
-                if (event.target === historyModal) {
-                    historyModal.style.display = 'none';
-                    historyModal.hidden = true;
-                }
-            };
-        });
-    </script>
 </body>
 </html> 
