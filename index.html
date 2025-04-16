@@ -17,16 +17,18 @@
                 const { data: { session } } = await supabase.auth.getSession();
                 
                 if (session) {
-                    // 已登录用户直接进入主应用
-                    window.location.href = './main.html';
+                    // 已登录用户直接进入仪表板
+                    window.location.href = './dashboard.html';
                 } else {
-                    // 未登录用户进入引导页
-                    window.location.href = './onboarding.html';
+                    // 未登录用户留在当前页面显示登录表单
+                    document.querySelector('.auth-container').style.display = 'flex';
+                    document.querySelector('#loading-container').style.display = 'none';
                 }
             } catch (error) {
                 console.error('认证检查失败:', error);
-                // 发生错误时默认进入引导页
-                window.location.href = './onboarding.html';
+                // 发生错误时显示登录表单
+                document.querySelector('.auth-container').style.display = 'flex';
+                document.querySelector('#loading-container').style.display = 'none';
             }
         };
 
@@ -52,7 +54,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5;">
+    <div id="loading-container" style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5;">
         <div style="text-align: center;">
             <h1>正在加载...</h1>
             <p>请稍候，我们正在为您准备最佳体验</p>

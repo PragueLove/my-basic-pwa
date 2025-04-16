@@ -35,8 +35,8 @@ class AuthManager {
 
       if (error) throw error;
 
-      // 登录成功后跳转到主页面
-      window.location.href = './main.html';
+      // 登录成功后跳转到仪表板
+      window.location.href = './dashboard.html';
       return data.user;
     } catch (error) {
       console.error('登录失败:', error);
@@ -62,7 +62,7 @@ class AuthManager {
             email: email,
             signup_date: new Date().toISOString()
           },
-          emailRedirectTo: `${window.location.origin}/login.html`
+          emailRedirectTo: `${window.location.origin}/index.html?verified=true`
         }
       });
 
@@ -250,7 +250,7 @@ async function checkAuth() {
   }
 
   if (session) {
-    window.location.href = '/dashboard.html';
+    window.location.href = './dashboard.html';
   }
 }
 
