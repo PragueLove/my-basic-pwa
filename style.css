@@ -1,20 +1,47 @@
 :root {
-  /* 颜色变量 */
-  --color-primary: #3498db;
-  --color-success: #2ecc71;
-  --color-danger: #e74c3c;
-  --color-warning: #f39c12;
-  --color-text: #2c3e50;
-  --color-bg: #f4f4f4;
-  --color-border: #eee;
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --transition: all 0.2s ease;
+  /* 主题颜色 */
+  --primary: #3498db;
+  --primary-light: #5dade2;
+  --primary-dark: #2980b9;
+  --success: #2ecc71;
+  --success-light: #a8e6cf;
+  --danger: #e74c3c;
+  --danger-light: #f5b7b1;
+  --warning: #f1c40f;
+  --warning-light: #f9e79f;
+  --disabled: #bdc3c7;
+  
+  /* 文本颜色 */
+  --text-primary: #2c3e50;
+  --text-secondary: #7f8c8d;
+  --text-light: #95a5a6;
+  
+  /* 背景颜色 */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --bg-light: #ecf0f1;
+  
+  /* 边框颜色 */
+  --border-color: #dcdde1;
+  
+  /* 阴影 */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.12);
+  --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+  --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+  
+  /* 圆角 */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  
+  /* 间距 */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 2rem;
 }
 
-/* 基础重置和排版 */
+/* 重置样式 */
 *,
 *::before,
 *::after {
@@ -31,11 +58,16 @@ html {
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.6;
-  color: var(--color-text);
-  background-color: #f5f5f5;
+  color: var(--text-primary);
+  background-color: var(--bg-light);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+}
+
+/* 通用样式 */
+input, button {
+  font-family: inherit;
 }
 
 /* 实用工具类 */

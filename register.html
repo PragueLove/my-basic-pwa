@@ -17,24 +17,17 @@
     <!-- 本地样式 -->
     <link rel="stylesheet" href="style.css">
     <link rel="stylesheet" href="auth.css">
-    
-    <!-- 环境变量 -->
-    <script>
-    window._env_ = {
-        VITE_SUPABASE_URL: '您的_SUPABASE_URL',
-        VITE_SUPABASE_ANON_KEY: '您的_SUPABASE_ANON_KEY'
-    };
-    </script>
 </head>
 <body>
     <div class="auth-container">
-        <!-- 注册表单 -->
-        <div class="auth-card" id="register-form">
-            <h2>注册</h2>
-            <div class="special-offer-banner">
-                <p>🎉 新用户专享：注册即可获得30天专业版免费试用</p>
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>注册</h1>
+                <div class="special-offer-banner">
+                    <p>🎉 新用户专享：注册即可获得30天专业版免费试用</p>
+                </div>
             </div>
-            <form id="register">
+            <form id="register" class="auth-form">
                 <div class="form-group">
                     <label for="register-email">邮箱</label>
                     <input type="email" id="register-email" required>
@@ -48,15 +41,11 @@
                     <input type="password" id="register-confirm-password" required>
                 </div>
                 <button type="submit" class="auth-button">注册</button>
+                <div class="auth-links">
+                    <a href="./login.html" class="auth-link">已有账号？立即登录</a>
+                    <a href="#" id="resend-verification" class="auth-link">重新发送验证邮件</a>
+                </div>
             </form>
-            <div class="auth-links">
-                <p class="auth-switch">
-                    已有账号？<a href="./login.html">立即登录</a>
-                </p>
-                <p class="auth-switch">
-                    <a href="#" id="resend-verification">重新发送验证邮件</a>
-                </p>
-            </div>
         </div>
     </div>
 

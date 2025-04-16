@@ -163,23 +163,21 @@ class AuthManager {
 class UI {
   /**
    * 显示加载状态
-   * @param {HTMLButtonElement} button - 按钮元素
+   * @param {HTMLElement} element - 要显示加载状态的元素
    * @param {boolean} loading - 是否显示加载状态
    */
-  static setLoading(button, loading) {
-    if (!button) return;
+  static setLoading(element, loading) {
+    if (!element) return;
     
     if (loading) {
-      if (!button.getAttribute('data-original-text')) {
-        button.setAttribute('data-original-text', button.textContent);
-      }
-      button.disabled = true;
-      button.classList.add('loading');
-      button.textContent = '处理中...';
+      element.setAttribute('data-original-text', element.textContent);
+      element.disabled = true;
+      element.classList.add('loading');
+      element.textContent = '处理中...';
     } else {
-      button.disabled = false;
-      button.classList.remove('loading');
-      button.textContent = button.getAttribute('data-original-text') || button.textContent;
+      element.disabled = false;
+      element.classList.remove('loading');
+      element.textContent = element.getAttribute('data-original-text') || element.textContent;
     }
   }
 
@@ -188,11 +186,7 @@ class UI {
    * @param {string} message - 错误信息
    */
   static showError(message) {
-    const toast = document.createElement('div');
-    toast.className = 'toast error';
-    toast.textContent = message;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+    this.showToast(message, 'error');
   }
 
   /**
@@ -200,11 +194,31 @@ class UI {
    * @param {string} message - 成功信息
    */
   static showSuccess(message) {
+    this.showToast(message, 'success');
+  }
+
+  /**
+   * 显示 Toast 消息
+   * @param {string} message - 消息内容
+   * @param {string} type - 消息类型（success/error）
+   */
+  static showToast(message, type = 'success') {
+    // 移除现有的 toast
+    const existingToast = document.querySelector('.toast');
+    if (existingToast) {
+      existingToast.remove();
+    }
+
     const toast = document.createElement('div');
-    toast.className = 'toast success';
+    toast.className = `toast ${type}`;
     toast.textContent = message;
     document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 5000);
+
+    // 自动移除
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
   }
 }
 
@@ -255,9 +269,25 @@ const registerForm = document.getElementById('register');
 if (registerForm) {
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const email = document.getElementById('register-email').value;
+    const email = document.getElementById('register-email').value.trim();
     const password = document.getElementById('register-password').value;
     const confirmPassword = document.getElementById('register-confirm-password').value;
+
+    // 表单验证
+    if (!email) {
+      UI.showError('请输入邮箱地址');
+      return;
+    }
+
+    if (!password) {
+      UI.showError('请输入密码');
+      return;
+    }
+
+    if (password.length < 6) {
+      UI.showError('密码长度至少需要6个字符');
+      return;
+    }
 
     if (password !== confirmPassword) {
       UI.showError('两次输入的密码不一致');
@@ -269,10 +299,10 @@ if (registerForm) {
       UI.setLoading(submitButton, true);
 
       const result = await authManager.register(email, password);
-      console.log('注册结果:', result); // 添加调试日志
+      console.log('注册结果:', result);
       
       // 显示成功消息
-      UI.showSuccess(result.message);
+      UI.showSuccess(result.message || '注册成功！请查收验证邮件。');
       
       // 清空表单
       registerForm.reset();
@@ -282,8 +312,8 @@ if (registerForm) {
         window.location.href = './login.html';
       }, 3000);
     } catch (error) {
-      console.error('注册表单错误:', error);
-      UI.showError(error.message);
+      console.error('注册失败:', error);
+      UI.showError(error.message || '注册失败，请稍后重试');
     } finally {
       const submitButton = registerForm.querySelector('button[type="submit"]');
       UI.setLoading(submitButton, false);
@@ -308,23 +338,30 @@ document.getElementById('show-login').addEventListener('click', (e) => {
   registerForm.hidden = true;
 });
 
-// 重发验证邮件
-document.getElementById('resend-verification').addEventListener('click', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('register-email').value;
-  
-  if (!email) {
-    alert('请先输入邮箱地址');
-    return;
-  }
+// 重发验证邮件处理
+const resendVerificationButton = document.getElementById('resend-verification');
+if (resendVerificationButton) {
+  resendVerificationButton.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('register-email').value.trim();
+    
+    if (!email) {
+      UI.showError('请先输入邮箱地址');
+      return;
+    }
 
-  try {
-    const result = await authManager.resendVerificationEmail(email);
-    alert(result.message);
-  } catch (error) {
-    alert('发送失败：' + error.message);
-  }
-});
+    try {
+      UI.setLoading(resendVerificationButton, true);
+      const result = await authManager.resendVerificationEmail(email);
+      UI.showSuccess(result.message || '验证邮件已重新发送！');
+    } catch (error) {
+      console.error('发送验证邮件失败:', error);
+      UI.showError(error.message || '发送失败，请稍后重试');
+    } finally {
+      UI.setLoading(resendVerificationButton, false);
+    }
+  });
+}
 
 // 检查登录状态
 async function checkAuth() {
