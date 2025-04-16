@@ -1,7 +1,24 @@
 // 认证管理类
+import { supabase } from './config.js';
+
 class AuthManager {
-  constructor(supabase) {
+  constructor() {
     this.supabase = supabase;
+    this.checkSession();
+  }
+
+  /**
+   * 检查当前会话状态
+   */
+  async checkSession() {
+    try {
+      const { data: { session }, error } = await this.supabase.auth.getSession();
+      if (error) throw error;
+      return session;
+    } catch (error) {
+      console.error('检查会话状态失败:', error);
+      return null;
+    }
   }
 
   /**
@@ -34,59 +51,55 @@ class AuthManager {
    */
   async register(email, password) {
     try {
+      console.log('开始注册流程，邮箱:', email);
+
       // 1. 注册用户
-      const { data: authData, error: authError } = await this.supabase.auth.signUp({
+      const { data, error } = await this.supabase.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/index.html?verified=true`,
           data: {
-            email: email
-          }
+            email: email,
+            signup_date: new Date().toISOString()
+          },
+          emailRedirectTo: `${window.location.origin}/login.html`
         }
       });
 
-      if (authError) {
-        console.error('认证错误:', authError);
-        // 处理特定的错误情况
-        if (authError.message.includes('Email rate limit exceeded')) {
-          throw new Error('发送邮件次数超限，请稍后再试');
-        }
-        throw authError;
+      console.log('注册响应:', data, error);
+
+      if (error) {
+        throw error;
       }
 
-      // 检查注册响应
-      if (!authData?.user) {
-        throw new Error('注册失败：服务器响应异常');
+      if (!data?.user) {
+        throw new Error('注册失败：未收到用户数据');
       }
 
-      // 检查邮件发送状态
-      if (!authData.user.confirmation_sent_at) {
+      // 检查邮件确认状态
+      if (data.user.confirmation_sent_at) {
+        console.log('验证邮件已发送时间:', data.user.confirmation_sent_at);
+        return {
+          success: true,
+          message: '注册成功！请查收验证邮件。\n如果未收到邮件，请检查垃圾邮件文件夹或使用重新发送功能。',
+          user: data.user
+        };
+      } else {
+        console.warn('未检测到验证邮件发送确认');
         throw new Error('验证邮件发送失败，请使用重新发送验证邮件功能');
       }
-
-      console.log('注册响应:', authData); // 添加调试日志
-
-      return { 
-        success: true, 
-        message: '注册成功！请查收验证邮件。\n如果未收到邮件，请检查垃圾邮件文件夹或使用重新发送功能。',
-        user: authData.user 
-      };
     } catch (error) {
       console.error('注册失败:', error);
       
       // 处理常见错误
-      if (error.message.includes('User already registered')) {
+      if (error.message?.includes('User already registered')) {
         throw new Error('该邮箱已被注册，请直接登录或使用其他邮箱。');
       }
-      if (error.message.includes('Password should be at least 6 characters')) {
+      if (error.message?.includes('Password should be at least 6 characters')) {
         throw new Error('密码长度至少需要6个字符。');
       }
-      if (error.message.includes('Invalid email')) {
+      if (error.message?.includes('Invalid email')) {
         throw new Error('请输入有效的邮箱地址。');
-      }
-      if (error.status === 401) {
-        throw new Error('认证失败：请检查 Supabase 配置是否正确');
       }
       
       throw new Error(error.message || '注册失败，请稍后重试');
@@ -95,35 +108,37 @@ class AuthManager {
 
   /**
    * 重新发送验证邮件
+   * @param {string} email - 邮箱地址
    */
   async resendVerificationEmail(email) {
     try {
-      console.log('尝试重新发送验证邮件到:', email); // 添加调试日志
+      console.log('尝试重新发送验证邮件到:', email);
       
       const { data, error } = await this.supabase.auth.resend({
         type: 'signup',
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/index.html?verified=true`
+          emailRedirectTo: window.location.origin + '/login.html'
         }
       });
 
-      console.log('重发邮件响应:', data); // 添加调试日志
+      console.log('重发邮件响应:', data, error);
 
       if (error) {
-        console.error('重发邮件错误:', error);
-        if (error.message.includes('Email rate limit exceeded')) {
-          throw new Error('发送邮件次数超限，请等待一段时间后再试');
-        }
         throw error;
       }
 
-      return { 
-        success: true, 
-        message: '验证邮件已重新发送！\n请检查收件箱和垃圾邮件文件夹。' 
+      return {
+        success: true,
+        message: '验证邮件已重新发送！\n请检查收件箱和垃圾邮件文件夹。'
       };
     } catch (error) {
       console.error('发送验证邮件失败:', error);
+      
+      if (error.message?.includes('Email rate limit exceeded')) {
+        throw new Error('发送邮件次数超限，请等待一段时间后再试');
+      }
+      
       throw new Error(error.message || '发送验证邮件失败，请稍后重试');
     }
   }
@@ -223,24 +238,24 @@ class UI {
 }
 
 // 初始化
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+const authManager = new AuthManager();
 
-// 创建 Supabase 客户端实例
-const supabase = createClient(
-  // 尝试从 Vite 环境变量获取，如果不可用则从 window._env_ 获取
-  (import.meta.env?.VITE_SUPABASE_URL || window._env_?.VITE_SUPABASE_URL),
-  (import.meta.env?.VITE_SUPABASE_ANON_KEY || window._env_?.VITE_SUPABASE_ANON_KEY)
-);
+// 检查用户认证状态
+async function checkAuth() {
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error) {
+    console.error('认证状态检查失败:', error.message);
+    return;
+  }
 
-// 创建认证管理器实例
-const authManager = new AuthManager(supabase);
-
-// 检查是否已登录
-const { data: { session } } = await supabase.auth.getSession();
-if (session) {
-  window.location.href = './main.html';
-  return;
+  if (session) {
+    window.location.href = '/dashboard.html';
+  }
 }
+
+// 页面加载时检查认证状态
+window.addEventListener('load', checkAuth);
 
 // 登录表单处理
 const loginForm = document.getElementById('login');
@@ -361,26 +376,4 @@ if (resendVerificationButton) {
       UI.setLoading(resendVerificationButton, false);
     }
   });
-}
-
-// 检查登录状态
-async function checkAuth() {
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (user) {
-    // 如果在登录或注册页面，且已登录，则跳转到主页
-    if (window.location.pathname.includes('login.html') || 
-        window.location.pathname.includes('register.html')) {
-      window.location.href = './index.html';
-    }
-  } else {
-    // 如果在需要认证的页面，且未登录，则跳转到登录页
-    if (!window.location.pathname.includes('login.html') && 
-        !window.location.pathname.includes('register.html')) {
-      window.location.href = './login.html';
-    }
-  }
-}
-
-// 页面加载时检查认证状态
-window.addEventListener('load', checkAuth); 
+} 

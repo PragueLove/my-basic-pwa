@@ -1,11 +1,13 @@
+import { supabase } from './config.js'
+
 // ==== 模块化封装 =====
 
 /**
  * 认证管理类 - 处理用户登录、注册和认证状态
  */
 class AuthManager {
-  constructor(supabase) {
-    this.supabase = supabase;  // Supabase客户端实例
+  constructor() {
+    this.supabase = supabase;  // 使用导入的 supabase 实例
     this.initAuthListeners();  // 初始化认证状态监听
   }
 
@@ -450,14 +452,8 @@ class UI {
 
 // ==== 初始化流程 ====
 document.addEventListener('DOMContentLoaded', async () => {
-  // 初始化Supabase客户端
-  const supabaseUrl = 'https://ebyyrppkpxpfchmbwfxz.supabase.co';  // 替换为您的 Supabase URL
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVieXlycHBrcHhwZmNobWJ3Znh6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ1OTk2MTUsImV4cCI6MjA2MDE3NTYxNX0.hbB3tN7XvcIcRch1FpEMB3H4wEXy4wz9NNca3inQ5MA';  // 替换为您的 Supabase anon key
-  
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
   // 初始化功能模块
-  const authManager = new AuthManager(supabase);
+  const authManager = new AuthManager();
   const tracker = new Tracker(supabase);
   tracker.initMap();
 
